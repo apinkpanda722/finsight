@@ -83,6 +83,7 @@ class StepExecutor:
     def run(self):
         self._print_header()
         self._check_blockers()
+        self._check_clean_worktree()
         self._checkout_branch()
         guardrails = self._load_guardrails()
         self._ensure_created_at()
@@ -132,6 +133,40 @@ class StepExecutor:
             sys.exit(1)
 
         print(f"  Branch: {branch}")
+
+    def _check_clean_worktree(self):
+        """git add -A가 step 커밋에 무관한 변경사항을 함께 쓸어담지 않도록,
+        실행 전 작업 트리가 이 phase의 재개용 index/output metadata 외에 깨끗한지 확인한다.
+        더러우면 즉시 중단한다 (step 파일이 사용자의 준비 중인 변경사항까지 커밋해버리는 것을 방지)."""
+        r = self._run_git("status", "--porcelain")
+        if r.returncode != 0:
+            print(f"  ERROR: git status 실행 실패.")
+            print(f"  {r.stderr.strip()}")
+            sys.exit(1)
+
+        allowed_prefixes = (
+            "phases/index.json",
+            f"phases/{self._phase_dir_name}/index.json",
+            f"phases/{self._phase_dir_name}/step",  # step{N}-output.json 등 재개용 산출물
+        )
+
+        offending = []
+        for line in r.stdout.splitlines():
+            if not line.strip():
+                continue
+            path = line[3:].strip()
+            if " -> " in path:  # rename entries: "old -> new"
+                path = path.split(" -> ", 1)[1]
+            if any(path.startswith(p) for p in allowed_prefixes):
+                continue
+            offending.append(line)
+
+        if offending:
+            print(f"\n  ERROR: 작업 트리가 깨끗하지 않습니다. 아래 변경사항을 먼저 커밋하거나 stash하세요:")
+            for line in offending:
+                print(f"    {line}")
+            print(f"  Hint: 계획/가드레일/phase 파일 준비 작업은 이 스크립트를 실행하기 전에 별도로 커밋하세요.")
+            sys.exit(1)
 
     def _commit_step(self, step_num: int, step_name: str):
         output_rel = f"phases/{self._phase_dir_name}/step{step_num}-output.json"

@@ -1,0 +1,16 @@
+{
+  "project": "Finsight",
+  "phase": "mvp",
+  "steps": [
+    { "step": 0, "name": "project-setup", "status": "pending" },
+    { "step": 1, "name": "supabase-schema", "status": "pending" },
+    { "step": 2, "name": "supabase-auth", "status": "pending" },
+    { "step": 3, "name": "landing-dashboard-shell", "status": "pending" },
+    { "step": 4, "name": "polar-billing", "status": "pending" },
+    { "step": 5, "name": "statement-upload", "status": "pending" },
+    { "step": 6, "name": "claude-parsing-service", "status": "pending" },
+    { "step": 7, "name": "dashboard-insights", "status": "pending" },
+    { "step": 8, "name": "integration-verification", "status": "pending" },
+    { "step": 9, "name": "deploy-production-hardening", "status": "pending" }
+  ]
+}
