@@ -379,6 +379,53 @@ class TestCheckoutBranch:
 
 
 # ---------------------------------------------------------------------------
+# _check_clean_worktree (mocked)
+# ---------------------------------------------------------------------------
+
+class TestCheckCleanWorktree:
+    def _mock_git(self, executor, stdout, returncode=0):
+        def fake_git(*args):
+            return MagicMock(returncode=returncode, stdout=stdout, stderr="")
+        executor._run_git = fake_git
+
+    def test_clean_tree_passes(self, executor):
+        self._mock_git(executor, "")
+        executor._check_clean_worktree()  # should not raise
+
+    def test_allowed_phase_index_only_passes(self, executor):
+        self._mock_git(executor, " M phases/0-mvp/index.json\n M phases/index.json\n")
+        executor._check_clean_worktree()
+
+    def test_allowed_step_output_passes(self, executor):
+        self._mock_git(executor, "?? phases/0-mvp/step2-output.json\n")
+        executor._check_clean_worktree()
+
+    def test_unrelated_dirty_file_exits(self, executor):
+        self._mock_git(executor, " M plan.md\n")
+        with pytest.raises(SystemExit) as exc_info:
+            executor._check_clean_worktree()
+        assert exc_info.value.code == 1
+
+    def test_untracked_file_exits(self, executor):
+        self._mock_git(executor, "?? src/foo.ts\n")
+        with pytest.raises(SystemExit) as exc_info:
+            executor._check_clean_worktree()
+        assert exc_info.value.code == 1
+
+    def test_rename_entry_checked_against_new_path(self, executor):
+        self._mock_git(executor, "R  old.md -> plan.md\n")
+        with pytest.raises(SystemExit) as exc_info:
+            executor._check_clean_worktree()
+        assert exc_info.value.code == 1
+
+    def test_git_status_failure_exits(self, executor):
+        self._mock_git(executor, "", returncode=1)
+        with pytest.raises(SystemExit) as exc_info:
+            executor._check_clean_worktree()
+        assert exc_info.value.code == 1
+
+
+# ---------------------------------------------------------------------------
 # _commit_step (mocked)
 # ---------------------------------------------------------------------------
 

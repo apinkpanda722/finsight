@@ -3,6 +3,14 @@ node_modules/
 out/
 next-env.d.ts
 tsconfig.tsbuildinfo
+__pycache__/
+.pytest_cache/
+
+# local environment secrets
+.env
+.env.local
+.env.*.local
+!.env.example
 
 # local IDE / logs
 .idea/
