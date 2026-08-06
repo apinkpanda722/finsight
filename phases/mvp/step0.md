@@ -7,6 +7,7 @@
 - `/CLAUDE.md`
 - `/docs/ARCHITECTURE.md`
 - `/docs/ADR.md` (특히 ADR-001: Next.js 15 고정 이유)
+- `/docs/DESIGN.md` (디자인 철학 — `finsight-design-system` 스킬이 자동으로 참고하게 하거나 직접 읽는다)
 - `/.claude/hooks/tdd-guard.sh`
 
 이 저장소는 현재 애플리케이션 코드가 없는 빈 상태다(`docs/`, `.claude/`, `phases/`, `scripts/`, `plan.md` 등 준비 문서만 있음). 이 step은 Next.js 프로젝트를 처음부터 스캐폴딩한다.
@@ -35,11 +36,22 @@ npx shadcn@latest init -y
 npx shadcn@latest add button card input label form dialog badge alert skeleton
 ```
 
-### 3. Vitest + React Testing Library
+### 3. 디자인 토큰 적용 (`finsight-design-system` 스킬 참고)
+
+`docs/DESIGN.md`와 `.claude/skills/finsight-design-system/references/tokens/*.css`를 읽고(또는 `finsight-design-system` 스킬을 사용해) 아래를 반영한다:
+
+- `src/app/globals.css`에 finsight 토큰 값을 shadcn 컨벤션 변수로 덮어쓴다: `--primary`→`--color-primary`(#1C4ED8), `--primary-foreground`→`--color-on-primary`, `--background`→`--color-canvas`, `--foreground`→`--color-ink`, `--muted-foreground`→`--color-body`/`--color-muted`, `--border`→`--color-hairline`.
+- `next/font/google`로 Inter(`--font-display`/`--font-body`)와 JetBrains Mono(`--font-mono`)를 로드하고 CSS 변수로 노출한다(`tokens/fonts.css` 참고).
+- 방금 추가한 shadcn `button`/`input`(`src/components/ui/button.tsx`, `input.tsx`)의 기본 radius 클래스를 `rounded-md`에서 `rounded-full`(pill)로 바꾼다 — finsight 디자인은 모든 인터랙티브 요소가 pill 모양이어야 한다. `card.tsx`는 `rounded-[24px]`로 맞춘다.
+- 금액/숫자 표시용 유틸 클래스(예: `font-mono tabular-nums`)를 하나 정의해 이후 step들이 재사용하게 한다.
+
+이 항목들은 `src/components/ui/*`(tdd-guard 예외)와 `globals.css`만 건드리므로 테스트 없이 진행 가능하다.
+
+### 4. Vitest + React Testing Library
 
 `vitest`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`을 devDependency로 설치한다. `vitest.config.ts`(jsdom 환경, `src/test/setup.ts`를 setupFiles로 등록)와 `src/test/setup.ts`(`@testing-library/jest-dom` import)를 만든다. `package.json`의 `test` 스크립트를 `"vitest run"`으로 설정한다(watch 모드가 아닌 1회 실행 — CI/harness AC에서 종료 코드가 필요하다).
 
-### 4. `lib/env.ts` (zod 환경변수 검증)
+### 5. `lib/env.ts` (zod 환경변수 검증)
 
 **TDD 순서를 지켜라 — 이 파일은 tdd-guard 예외가 아니다.** 먼저 `src/lib/env.test.ts`를 작성해 필수 변수가 없으면 파싱이 실패하고, 있으면 타입이 있는 객체를 반환하는지 검증한 뒤, `src/lib/env.ts`를 구현한다.
 
@@ -51,11 +63,11 @@ ANTHROPIC_API_KEY, POLAR_ACCESS_TOKEN, POLAR_WEBHOOK_SECRET, POLAR_PRO_PRODUCT_I
 POLAR_SERVER (z.enum(['sandbox','production'])), SUCCESS_URL (z.string().url())
 ```
 
-### 5. `.env.example`
+### 6. `.env.example`
 
 Git에 커밋되는 템플릿이다. 실제 값이 든 `.env`는 이미 `.gitignore`에 등록돼 있으니 건드리지 마라. `.env.example`에는 위 변수명만 값 없이(또는 `sandbox`처럼 민감하지 않은 기본값만) 나열한다.
 
-### 6. TDD guard 예외 확정 반영
+### 7. TDD guard 예외 확정 반영
 
 `.claude/hooks/tdd-guard.sh`의 `case "$file_path" in ... esac` 블록에 아래 세 경로를 **기존 항목(`src/components/ui/*`, `src/types/*`, `src/test/*`)에 추가**한다 — 순서를 바꾸거나 기존 항목을 지우지 마라:
 
@@ -77,6 +89,7 @@ npm test
 
 1. 위 AC 커맨드를 전부 실행해 통과하는지 확인한다.
 2. `npx shadcn@latest add ...`로 추가된 컴포넌트가 `src/components/ui/`에 있는지 확인한다.
+2-1. `globals.css`에 `.claude/skills/finsight-design-system/references/tokens/colors.css`의 값(`--color-primary: #1C4ED8` 등)이 shadcn 변수로 반영됐는지, `button.tsx`/`input.tsx`가 `rounded-full`을 쓰는지 확인한다.
 3. `.claude/hooks/tdd-guard.sh`에 새 경로가 추가됐는지, 기존 예외/로직이 그대로인지 확인한다(`diff` 또는 `git diff`로 검토).
 4. `src/lib/env.test.ts`가 `src/lib/env.ts`보다 먼저 작성됐는지(git 히스토리 또는 커밋 순서상) 확인한다.
 5. 결과에 따라 `phases/mvp/index.json`의 step 0 항목을 업데이트한다.
@@ -84,6 +97,7 @@ npm test
 ## 금지사항
 
 - `package.json`의 `private`, `license` 등 create-next-app 기본값 외 필드를 임의로 추가하지 마라 — 이유: 이후 step들이 기본 스캐폴딩을 전제로 작성됐다.
+- `.claude/skills/finsight-design-system/references/tokens/*.css`에 없는 색상·radius 값을 임의로 만들어 쓰지 마라 — 이유: finsight는 악센트 컬러가 Deep Azure 하나뿐인 근접 무채색 디자인이다. 새 색이 필요해 보이면 토큰에 있는 값 중 가장 가까운 것을 쓴다.
 - 위에 나열한 shadcn 컴포넌트 외 다른 컴포넌트를 추가하지 마라 — 이유: 필요할 때 해당 기능을 구현하는 step에서 추가하는 게 원칙이다.
 - `lib/supabase`, `lib/polar`, `lib/anthropic`, `services/`, `app/api/` 등 실제 기능 코드를 이 step에서 구현하지 마라 — 이유: 이후 step의 범위이며, 이 step은 스캐폴딩과 tdd-guard 설정만 다룬다.
 - `tdd-guard.sh`의 기존 예외 항목(`src/components/ui/*`, `src/types/*`, `src/test/*`, `main.tsx`, `*.d.ts`)을 지우거나 순서를 바꾸지 마라 — 이유: 다른 step이 이 동작에 의존한다.

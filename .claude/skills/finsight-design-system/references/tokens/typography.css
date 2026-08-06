@@ -1,0 +1,27 @@
+:root{
+--font-display:'Inter',-apple-system,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+--font-body:'Inter',-apple-system,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+--font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+--text-display-mega:400 80px/1.0 var(--font-display);
+--ls-display-mega:-2px;
+--text-display-xl:400 64px/1.0 var(--font-display);
+--ls-display-xl:-1.6px;
+--text-display-lg:400 52px/1.0 var(--font-display);
+--ls-display-lg:-1.3px;
+--text-display-md:400 44px/1.09 var(--font-display);
+--ls-display-md:-1px;
+--text-display-sm:400 36px/1.11 var(--font-display);
+--ls-display-sm:-0.5px;
+--text-title-lg:400 32px/1.13 var(--font-display);
+--ls-title-lg:-0.4px;
+--text-title-md:600 18px/1.33 var(--font-body);
+--text-title-sm:600 16px/1.25 var(--font-body);
+--text-body-md:400 16px/1.5 var(--font-body);
+--text-body-strong:700 16px/1.5 var(--font-body);
+--text-body-sm:400 14px/1.5 var(--font-body);
+--text-caption:400 13px/1.5 var(--font-body);
+--text-caption-strong:600 12px/1.5 var(--font-body);
+--text-number-display:500 18px/1.4 var(--font-mono);
+--text-button:600 16px/1.15 var(--font-body);
+--text-nav-link:500 14px/1.4 var(--font-body);
+}

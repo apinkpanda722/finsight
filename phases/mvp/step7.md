@@ -6,19 +6,17 @@
 - `/docs/ARCHITECTURE.md`
 - step 1의 `has_locked_history()` RPC와 `transactions`/`accounts` RLS 정책
 - step 3의 대시보드 셸(`(dashboard)/dashboard/page.tsx`가 지금은 빈 상태만 보여준다), step 4의 plan 배지
+- `.claude/skills/finsight-design-system/references/prototype/dashboard-screens.jsx`의 `Overview()`, `AccountChips()`, `CategoryBar()`, `MonthlyTrend()` (레이아웃/인터랙션 참조 — `finsight-design-system` 스킬 참고)
 
 ## 작업
 
-### 1. 차트 컴포넌트
+### 1. 월별 추이 차트 — 별도 차트 라이브러리 없이 구현
 
-```bash
-npx shadcn@latest add chart
-```
-(recharts 기반 shadcn 차트 프리미티브가 `src/components/ui/`에 추가된다 — tdd-guard 예외.)
+`MonthlyTrend()` 프로토타입은 recharts 같은 라이브러리 없이 순수 div + 높이 비율 계산만으로 막대 그래프를 그린다(막대 12개 안팎이라 라이브러리가 필요 없다는 판단). 같은 방식을 Tailwind로 옮긴다 — `npx shadcn@latest add chart`(recharts 의존성 추가)는 **설치하지 마라**, 불필요한 의존성이다. `MonthlyTrend()`의 잠긴 달 막대(🔒, `--color-hairline` 배경) 패턴을 Free 히스토리 제한 표시에 그대로 활용한다.
 
 ### 2. 계좌 선택기
 
-`accounts` 테이블에서 로그인한 사용자의 계좌 목록을 조회한다(RLS로 이미 본인 것만 보임). Free는 계좌가 최대 1개라 선택기가 사실상 안 보이거나 자동 선택되고, Pro는 여러 계좌 중 하나를 골라 그 계좌의 인사이트만 본다. **여러 계좌를 합산하는 뷰는 만들지 마라 — 이번 MVP 범위 밖이다.**
+`AccountChips()` 참고 — `accounts` 테이블에서 로그인한 사용자의 계좌 목록을 조회한다(RLS로 이미 본인 것만 보임). Free는 계좌가 최대 1개라 선택기가 사실상 안 보이거나 자동 선택되고, Pro는 여러 계좌 중 하나를 골라 그 계좌의 인사이트만 본다. **여러 계좌를 합산하는 뷰는 만들지 마라 — 이번 MVP 범위 밖이다.**
 
 ### 3. 계좌별 거래 조회
 
@@ -36,7 +34,7 @@ const { data } = await supabase
 
 ### 4. 카테고리별 지출 요약 + 월별 추이
 
-받아온 행을 애플리케이션 코드(순수 함수, 테스트 대상)로 집계한다 — 별도 집계 뷰/RPC를 만들지 않는다(MVP 단순화):
+`Overview()`의 레이아웃(이번 달 총 지출/전월 대비 2열 요약 카드 + 카테고리별 지출 목록/월별 추이 2열 그리드)을 따른다. `CategoryBar()`처럼 라벨-금액을 위에, 그 아래 pill 모양 진행 막대(`--radius-pill` 배경 트랙 + `--color-primary` 채움)로 비율을 표시한다. 숫자는 전부 `font-mono`(JetBrains Mono)로 렌더링한다. 받아온 행을 애플리케이션 코드(순수 함수, 테스트 대상)로 집계한다 — 별도 집계 뷰/RPC를 만들지 않는다(MVP 단순화):
 
 - `summarizeByCategory(transactions): { category: string; total: number }[]` — `amount < 0 && !['income','transfer'].includes(category)`인 행만 카테고리별로 합산한다.
 - `summarizeByMonth(transactions): { month: string; total: number }[]` — 같은 필터로 `transaction_date`의 연-월별 합산(월별 추이 차트용, 금액은 절대값으로 표시해도 됨).
@@ -70,5 +68,6 @@ npm test
 - `transactions` 조회에 날짜 범위를 애플리케이션 코드로 다시 필터링하지 마라 — RLS가 유일한 소스여야 한다(중복 로직은 나중에 RLS와 어긋날 수 있다).
 - 여러 계좌의 거래를 합쳐서 보여주는 UI나 쿼리를 만들지 마라 — PRD.md에 명시된 MVP 제외 항목이다.
 - `has_locked_history()` 대신 `transactions`를 직접 조회해서 과거 데이터 존재를 판단하지 마라 — RLS 우회 시도로 오인될 수 있는 패턴이다.
+- recharts 등 차트 라이브러리를 추가하지 마라 — 이유: `MonthlyTrend()` 프로토타입처럼 순수 div/Tailwind로 충분하고, 불필요한 의존성이다.
 - 카테고리별 집계용 새 DB 뷰나 RPC를 만들지 마라 — 이 step은 애플리케이션 레벨 집계로 충분하다는 결정이 이미 내려졌다.
 - 기존 테스트를 깨뜨리지 마라.
