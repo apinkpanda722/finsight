@@ -24,7 +24,7 @@ vercel link --yes
 
 ### 3. Fluid Compute / `maxDuration` 확인
 
-Vercel 대시보드/CLI에서 Fluid Compute가 활성화돼 있는지, 이 프로젝트의 플랜에서 Function `maxDuration=300`이 실제로 허용되는지 확인한다. 허용되지 않으면(예: 구형 Hobby 플랜) `complete-upload`/처리 관련 route의 `maxDuration`을 실제 허용 상한으로 낮추고, `lib/csv` 상한(행 수 2,000)이 그 시간 안에 끝나는지 step 8에서 기록한 실측 시간과 비교해 재조정한다.
+Vercel 대시보드/CLI에서 Fluid Compute가 활성화돼 있는지, 이 프로젝트의 플랜에서 Function `maxDuration=300`이 실제로 허용되는지 확인한다. 허용되지 않으면(예: 구형 Hobby 플랜) `complete-upload`/처리 관련 route의 `maxDuration`을 실제 허용 상한으로 낮추고, `lib/csv` 상한(행 수 2,000)이 그 시간 안에 끝나는지 step 6에서 기록한 실측 시간과 비교해 재조정한다.
 
 ### 4. Preview 배포
 
