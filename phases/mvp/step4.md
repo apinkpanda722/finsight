@@ -6,6 +6,7 @@
 - `/docs/ARCHITECTURE.md`
 - `/docs/ADR.md` (ADR-002, ADR-008)
 - step 1의 `profiles` 스키마 (구독 스냅샷 필드), step 2의 `requireUserId` 패턴, step 3의 `(dashboard)` 셸/사이드바
+- `.claude/skills/finsight-design-system/references/prototype/dashboard-screens.jsx`의 `Billing()` (요금제 화면 레이아웃 참조 — `finsight-design-system` 스킬 참고)
 
 ## 작업
 
@@ -75,7 +76,7 @@ export const POST = Webhooks({
 
 ### 6. `/settings/billing` 페이지
 
-`src/app/(dashboard)/settings/billing/page.tsx`: 현재 plan, `subscription_status`, `current_period_end`를 보여준다. Free면 "Pro로 업그레이드" 버튼, Pro면 "구독 관리" 버튼을 각각 `<form method="POST" action="/api/checkout">`/`<form method="POST" action="/api/portal">`로 구현한다(라우트가 POST 전용이므로 `fetch` 대신 실제 폼 제출로 303 리다이렉트를 브라우저가 자연스럽게 따라가게 한다). `subscription_status==='past_due'`면 "결제 수단을 확인해주세요" 배너를, `cancel_at_period_end===true`면 "OO까지 Pro 이용 가능, 이후 Free로 전환됩니다" 배너를 보여준다.
+`src/app/(dashboard)/settings/billing/page.tsx`: `dashboard-screens.jsx`의 `Billing()` 참고 — Free는 라이트 카드, Pro는 다크 카드(`--color-surface-dark`)로 대비를 준다. 현재 plan, `subscription_status`, `current_period_end`를 보여준다. Free면 "Pro로 업그레이드" 버튼, Pro면 "구독 관리" 버튼을 각각 `<form method="POST" action="/api/checkout">`/`<form method="POST" action="/api/portal">`로 구현한다(라우트가 POST 전용이므로 `fetch` 대신 실제 폼 제출로 303 리다이렉트를 브라우저가 자연스럽게 따라가게 한다). `subscription_status==='past_due'`면 "결제 수단을 확인해주세요" 배너를, `cancel_at_period_end===true`면 "OO까지 Pro 이용 가능, 이후 Free로 전환됩니다" 배너를 보여준다.
 
 ## Acceptance Criteria
 

@@ -6,6 +6,7 @@
 - `/docs/ARCHITECTURE.md`
 - `/docs/ADR.md`
 - `/.claude/hooks/tdd-guard.sh` (어떤 경로가 test-first 예외인지 확인)
+- `.claude/skills/finsight-design-system/references/prototype/auth-screens.jsx` (인증 화면 레이아웃 참조 — `finsight-design-system` 스킬 참고)
 - step 0/1에서 만들어진 `src/lib/env.ts`, `src/types/supabase.ts`, `.env.example`
 
 ## 작업
@@ -37,12 +38,14 @@
 
 로그인 성공 후 `returnTo` 쿼리 파라미터로 리다이렉트하기 전에, 반드시 순수 함수 `isSafeReturnPath(path: string): boolean`을 만들어 검증한다 — `/`로 시작하고 `//`나 `://`를 포함하지 않는 경로만 허용한다(오픈 리다이렉트 방지). 안전하지 않으면 `/dashboard`로 대체한다. 이 함수는 tdd-guard 대상이므로 테스트를 먼저 작성한다.
 
-### 4. 인증 페이지
+### 4. 인증 페이지 (디자인은 `finsight-design-system` 스킬 참고)
 
-- **`src/app/(auth)/login/page.tsx`**: 이메일/비밀번호 로그인 폼(Client Component). 성공 시 검증된 `returnTo` 또는 `/dashboard`로 이동. 실패 시 에러 메시지. "이메일을 확인하지 않았습니다" 에러가 오면 재발송 버튼을 보여준다(`supabase.auth.resend({ type: 'signup', email })`).
-- **`src/app/(auth)/login/page.tsx`** 근처에 회원가입 폼도 둔다(별도 `/signup` 라우트로 분리해도 됨). `supabase.auth.signUp()` 성공 후 즉시 로그인시키지 말고 "이메일을 확인해주세요" 안내 화면으로 전환한다(Confirm email이 켜져 있어 세션이 바로 발급되지 않는다).
-- **`src/app/(auth)/forgot-password/page.tsx`**: 이메일 입력 → `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/auth/callback?next=/reset-password' })`.
-- **`src/app/(auth)/reset-password/page.tsx`**: recovery 세션에서만 접근 가능. 새 비밀번호 입력 → `supabase.auth.updateUser({ password })`.
+`.claude/skills/finsight-design-system/references/prototype/auth-screens.jsx`에 이 화면들의 동작하는 참조 구현이 있다 — 레이아웃/상태 전이는 그대로 따르고, inline style은 Tailwind+shadcn 컴포넌트(step 0에서 설정한 pill 버튼/인풋)로 옮긴다. 공통 wrapper는 `AuthShell`(중앙 정렬된 420px 카드, 상단에 "finsight" 워드마크) 패턴을 따른다.
+
+- **`src/app/(auth)/login/page.tsx`**: 이메일/비밀번호 로그인 폼(Client Component). `auth-screens.jsx`의 `Login()` 참고 — `justVerified` 파라미터로 들어오면 "이메일 인증이 완료되었습니다" 안내 배너를 보여준다. 성공 시 검증된 `returnTo` 또는 `/dashboard`로 이동. 실패 시 에러 메시지. "이메일을 확인하지 않았습니다" 에러가 오면 재발송 버튼을 보여준다(`supabase.auth.resend({ type: 'signup', email })`).
+- **`src/app/(auth)/login/page.tsx`** 근처에 회원가입 폼도 둔다(별도 `/signup` 라우트로 분리해도 됨) — `auth-screens.jsx`의 `Signup()` 참고. `supabase.auth.signUp()` 성공 후 즉시 로그인시키지 말고, `VerifyEmail()` 패턴대로 "메일함을 확인해주세요" 안내 화면으로 전환한다(Confirm email이 켜져 있어 세션이 바로 발급되지 않는다).
+- **`src/app/(auth)/forgot-password/page.tsx`**: `auth-screens.jsx`의 `ForgotPassword()` 참고. 이메일 입력 → `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/auth/callback?next=/reset-password' })`.
+- **`src/app/(auth)/reset-password/page.tsx`**: `auth-screens.jsx`의 `ResetPassword()` 참고. recovery 세션에서만 접근 가능. 새 비밀번호 입력 → `supabase.auth.updateUser({ password })`.
 - **`src/app/(auth)/auth/callback/route.ts`**: PKCE `code`를 `exchangeCodeForSession`으로 교환한다. `next` 쿼리 파라미터가 있으면(비밀번호 재설정 흐름) `isSafeReturnPath()` 검증 후 그 경로로, 없으면(가입 확인 흐름) `/dashboard`로 리다이렉트한다.
 
 ### 5. `(dashboard)` 레이아웃 가드

@@ -6,6 +6,7 @@
 - `/docs/ARCHITECTURE.md` (CSV 업로드 데이터 흐름 1~5단계)
 - `/docs/ADR.md` (ADR-004, ADR-005, ADR-008)
 - step 1의 `uploaded_statements`/`accounts`/`upload_usage` 스키마와 `create_statement_upload` RPC, step 3의 `(dashboard)` 셸
+- `.claude/skills/finsight-design-system/references/prototype/dashboard-screens.jsx`의 `UploadModal()`, `Statements()`, `StatementRow()`, `StatusBadge()`, `ConfirmDelete()`, `AccountChips()` (업로드/목록 UI 레이아웃 참조 — `finsight-design-system` 스킬 참고)
 
 **범위 경계**: 이 step은 업로드 접수·검증까지만 다룬다. Claude 기반 실제 분석(column mapping, category 분류)과 `after()` 백그라운드 트리거, `retry` 라우트는 **step 6의 범위**다 — 이 step에서 만들지 마라.
 
@@ -106,9 +107,9 @@ export async function POST(req: NextRequest, { params }) {
 - GET: 소유자의 `StatementStatusResponse`(`retryable`은 이 step에서는 항상 `false` — lease 개념이 아직 없다. step 6에서 의미가 생긴다)를 반환한다.
 - DELETE: **Storage 삭제 → DB 삭제** 순서로 진행하고, Storage 객체가 이미 없어도(404) 성공으로 간주해 계속 진행한다(재호출 가능하게). `uploaded_statements` row를 delete하면 `transactions`는 `on delete cascade`로 함께 삭제된다. `upload_usage`는 건드리지 않는다(FK가 `on delete set null`이라 자동으로 유지됨).
 
-### 8. 업로드 UI
+### 8. 업로드 UI (디자인은 `finsight-design-system` 스킬 참고)
 
-`src/app/(dashboard)/uploads/page.tsx`: 계좌 선택/신규 계좌 라벨 입력 + 파일 선택. 흐름: `POST init-upload` → 받은 `uploadToken`으로 `supabase.storage.from('statements').uploadToSignedUrl(storagePath, uploadToken, file)` 직접 업로드 → 성공하면 `POST {id}/complete-upload` → 실패(네트워크 등)하면 `POST {id}/upload-url`로 토큰 재발급 후 재시도. `403 upgrade_required` 응답은 업그레이드 모달로, `429 rate_limited`는 제한 안내로 연결한다. statement 목록(상태 배지, 삭제 버튼)도 이 페이지에 둔다.
+`src/app/(dashboard)/uploads/page.tsx`: `dashboard-screens.jsx`의 `AccountChips()`(계좌 선택, Free는 잠긴 계좌에 🔒)로 계좌를 고르거나 신규 계좌 라벨을 입력하고, `UploadModal()`의 select→uploading(진행률바)→pending→processing→completed/failed 상태 전이와 `ConsentCheckbox`(Supabase/Anthropic 전달 동의) 패턴을 그대로 따른다. 흐름: `POST init-upload` → 받은 `uploadToken`으로 `supabase.storage.from('statements').uploadToSignedUrl(storagePath, uploadToken, file)` 직접 업로드 → 성공하면 `POST {id}/complete-upload` → 실패(네트워크 등)하면 `POST {id}/upload-url`로 토큰 재발급 후 재시도. `403 upgrade_required` 응답은 업그레이드 모달로, `429 rate_limited`는 제한 안내로 연결한다. statement 목록은 `Statements()`/`StatementRow()`/`StatusBadge()`/`ConfirmDelete()`(삭제는 별도 다이얼로그가 아니라 행 안에서 "삭제할까요? 삭제/취소"로 인라인 확인) 패턴을 따른다.
 
 ## Acceptance Criteria
 

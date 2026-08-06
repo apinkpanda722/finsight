@@ -5,19 +5,20 @@
 - `/CLAUDE.md`
 - `/docs/ARCHITECTURE.md`
 - `/docs/PRD.md` (요금제, 디자인 섹션)
+- `.claude/skills/finsight-design-system/references/prototype/auth-screens.jsx`의 `Landing()`, `dashboard-screens.jsx`의 `Sidebar()`/`PlanBadge()` (레이아웃 참조 — `finsight-design-system` 스킬 참고)
 - step 2에서 만들어진 `src/middleware.ts`, `src/lib/supabase/server.ts`, `src/app/(auth)/**`
 
 ## 작업
 
-이 step은 랜딩 페이지와 대시보드 셸(껍데기)만 만든다. 실제 업로드/결제 기능은 없다 — 이후 step이 채운다.
+이 step은 랜딩 페이지와 대시보드 셸(껍데기)만 만든다. 실제 업로드/결제 기능은 없다 — 이후 step이 채운다. 디자인은 `finsight-design-system` 스킬(`.claude/skills/finsight-design-system/`)을 따른다 — inline style을 그대로 복붙하지 말고 Tailwind+shadcn(step 0에서 설정한 pill 버튼, 색상/폰트 토큰)으로 옮긴다.
 
 ### 1. 랜딩 페이지
 
-`src/app/(marketing)/page.tsx`: Hero 섹션(제품 한 줄 소개 — CSV 업로드하면 Claude가 자동 분석해주는 개인 가계부), 핵심 기능 3가지 소개, Free/Pro 요금제 비교(PRD.md 참고: Free는 계좌 1개+최근 3개월, Pro는 다중 계좌+무제한 히스토리), "무료로 시작하기" CTA(`/login`으로 연결, 로그인 페이지에 회원가입 폼도 있다).
+`src/app/(marketing)/page.tsx`: `auth-screens.jsx`의 `Landing()` 레이아웃을 참고한다 — 다크 히어로(`--color-surface-dark`) 배경에 회전된 floating `ProductCard` 2장(이번 달 지출/카테고리 미리보기), 헤드라인("지출을 있는 그대로, 이해하기 쉽게." 톤의 sentence-case 문구), 기능 3열 그리드, Free/Pro 요금제 2열 비교(PRD.md 참고: Free는 계좌 1개+최근 3개월, Pro는 다중 계좌+무제한 히스토리), 하단 다크 밴드 CTA, Footer. "무료로 시작하기" CTA(`/login`으로 연결, 로그인 페이지에 회원가입 폼도 있다).
 
 ### 2. 대시보드 셸
 
-`src/app/(dashboard)/layout.tsx`: 사이드바 네비게이션(Dashboard, Uploads, Settings/Billing — 링크는 만들되 `/uploads`, `/settings/billing` 페이지 자체는 이후 step(5, 4)이 구현한다), 상단에 plan 배지("Free"/"Pro" — Server Component에서 `profiles.plan`을 조회해 표시), 로그아웃 버튼(`supabase.auth.signOut()` 후 `/`로 이동).
+`src/app/(dashboard)/layout.tsx`: `dashboard-screens.jsx`의 `Sidebar()`/`PlanBadge()` 참고 — 220px 고정 폭 사이드바(개요/명세서 관리/요금제 네비게이션 항목, Dashboard/Uploads/Settings/Billing 링크는 만들되 `/uploads`, `/settings/billing` 페이지 자체는 이후 step(5, 4)이 구현한다), 상단에 워드마크+plan 배지(pill, "Free"는 중립색/"Pro"는 primary 배경 — Server Component에서 `profiles.plan`을 조회해 표시), 로그아웃 버튼(`supabase.auth.signOut()` 후 `/`로 이동).
 
 `src/app/(dashboard)/dashboard/page.tsx`: 지금은 실제 거래 데이터가 없으므로 빈 상태 UI만 구현한다 — "아직 업로드한 명세서가 없어요. 첫 CSV를 업로드해보세요" 안내와 `/uploads`로 가는 버튼.
 

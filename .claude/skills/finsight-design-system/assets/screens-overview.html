@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="design_doc_mode" content="canvas">
+<title>finsight — 화면 모아보기</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+.frame{position:absolute;display:flex;flex-direction:column;gap:8px}
+.frame .label{font:600 13px/1.4 inherit;color:#333}
+.box{border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.06)}
+iframe{border:0;display:block}
+</style>
+</head>
+<body>
+<script>
+const FRAMES = [
+  { label:'랜딩 페이지', qs:'', sw:1440, sh:3100, bw:640 },
+  { label:'회원가입', qs:'route=signup', sw:1440, sh:900, bw:420 },
+  { label:'이메일 인증 대기', qs:'route=verify', sw:1440, sh:900, bw:420 },
+  { label:'로그인', qs:'route=login', sw:1440, sh:900, bw:420 },
+  { label:'비밀번호 찾기', qs:'route=forgot', sw:1440, sh:900, bw:420 },
+  { label:'새 비밀번호 설정', qs:'route=reset', sw:1440, sh:900, bw:420 },
+  { label:'대시보드 — 개요 (Free)', qs:'route=app&tab=overview', sw:1440, sh:900, bw:640 },
+  { label:'대시보드 — 개요 (Pro, 잠금 해제)', qs:'route=app&tab=overview&plan=pro', sw:1440, sh:900, bw:640 },
+  { label:'대시보드 — 명세서 관리', qs:'route=app&tab=statements', sw:1440, sh:900, bw:640 },
+  { label:'대시보드 — 요금제', qs:'route=app&tab=billing', sw:1440, sh:900, bw:640 },
+  { label:'명세서 업로드 모달', qs:'route=app&modal=upload', sw:1440, sh:900, bw:640 },
+  { label:'Pro 업그레이드 결제 모달', qs:'route=app&modal=checkout', sw:1440, sh:900, bw:640 },
+];
+const COLS = 4, GAP_X = 60, GAP_Y = 80;
+const colWidths = [];
+FRAMES.forEach((f,i)=>{ const col = i % COLS; colWidths[col] = Math.max(colWidths[col]||0, f.bw); });
+const colX = []; let acc = 0;
+for(let c=0;c<COLS;c++){ colX[c] = acc; acc += (colWidths[c]||0) + GAP_X; }
+const rowY = [0];
+FRAMES.forEach((f,i)=>{
+  const col = i % COLS, row = Math.floor(i/COLS);
+  const scale = f.bw / f.sw;
+  const bh = Math.round(f.sh * scale);
+  const x = colX[col];
+  const y = rowY[row] || 0;
+  const div = document.createElement('div');
+  div.className = 'frame';
+  div.style.left = x + 'px';
+  div.style.top = y + 'px';
+  div.innerHTML = '<div class="label">' + f.label + '</div><div class="box" style="width:' + f.bw + 'px;height:' + bh + 'px"><iframe src="Finsight Prototype.html?' + f.qs + '" style="width:' + f.sw + 'px;height:' + f.sh + 'px;transform:scale(' + scale + ');transform-origin:top left"></iframe></div>';
+  document.body.appendChild(div);
+  const nextRowStart = y + bh + 40 + GAP_Y;
+  rowY[row+1] = Math.max(rowY[row+1] || 0, nextRowStart);
+});
+</script>
+</body>
+</html>

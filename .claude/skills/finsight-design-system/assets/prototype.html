@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>finsight — 프로토타입</title>
+<link rel="stylesheet" href="_ds/finsight-design-system-c404e7e2-ae62-406a-8447-339f79ac12e2/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/finsight-design-system-c404e7e2-ae62-406a-8447-339f79ac12e2/tokens/colors.css">
+<link rel="stylesheet" href="_ds/finsight-design-system-c404e7e2-ae62-406a-8447-339f79ac12e2/tokens/typography.css">
+<link rel="stylesheet" href="_ds/finsight-design-system-c404e7e2-ae62-406a-8447-339f79ac12e2/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/finsight-design-system-c404e7e2-ae62-406a-8447-339f79ac12e2/tokens/radius.css">
+<link rel="stylesheet" href="_ds/finsight-design-system-c404e7e2-ae62-406a-8447-339f79ac12e2/styles.css">
+<script src="_ds/finsight-design-system-c404e7e2-ae62-406a-8447-339f79ac12e2/_ds_bundle.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="app/mock-data.js"></script>
+<script type="text/babel" src="app/auth-screens.jsx"></script>
+<script type="text/babel" src="app/dashboard-screens.jsx"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-body);background:var(--color-surface-soft);color:var(--color-ink)}
+a{color:var(--color-link)}
+a:hover{color:var(--color-link-hover)}
+button{font-family:inherit}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const D = window.FINSIGHT_DATA;
+
+function AppShell({ onLogout, initialTab, initialPlan, initialModal }) {
+  const [tab,setTab] = React.useState(initialTab || 'overview');
+  const [plan,setPlan] = React.useState(initialPlan || 'free');
+  const [statements,setStatements] = React.useState(D.statements);
+  const [showUpload,setShowUpload] = React.useState(initialModal === 'upload');
+  const [showCheckout,setShowCheckout] = React.useState(initialModal === 'checkout');
+
+  const TAB_TITLE = { overview:'개요', statements:'명세서 관리', billing:'요금제' };
+
+  function handleUploadComplete(filename){
+    setStatements(prev => [{ id:'st'+Date.now(), accountId:'acc1', filename: filename || '신한카드_2026-08.csv', uploadedAt:'2026-08-06', period:'2026-08', rows:142, status:'completed' }, ...prev]);
+    setShowUpload(false);
+    setTab('statements');
+  }
+
+  return (<div style={{display:'flex',minHeight:'100vh'}}>
+    <window.Sidebar active={tab} setActive={setTab} plan={plan}/>
+    <div style={{flex:1,display:'flex',flexDirection:'column'}}>
+      <div style={{height:64,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 24px',borderBottom:'1px solid var(--color-hairline)',background:'var(--color-canvas)'}}>
+        <div style={{font:'var(--text-title-md)'}}>{TAB_TITLE[tab]}</div>
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <span onClick={onLogout} style={{font:'var(--text-body-sm)',color:'var(--color-muted)',cursor:'pointer'}}>로그아웃</span>
+          <window.Button variant="primary" onClick={()=>setShowUpload(true)}>명세서 업로드</window.Button>
+        </div>
+      </div>
+      <div style={{padding:24,flex:1}}>
+        {tab === 'overview' && <window.Overview plan={plan} onUpgrade={()=>setTab('billing')}/>}
+        {tab === 'statements' && <window.Statements statements={statements} setStatements={setStatements}/>}
+        {tab === 'billing' && <window.Billing plan={plan} onOpenCheckout={()=>setShowCheckout(true)}/>}
+      </div>
+    </div>
+    {showUpload && <window.UploadModal onClose={()=>setShowUpload(false)} onComplete={handleUploadComplete}/>}
+    {showCheckout && <window.CheckoutModal onClose={()=>setShowCheckout(false)} onSuccess={()=>{ setPlan('pro'); setShowCheckout(false); setTab('overview'); }}/>}
+  </div>);
+}
+
+function Root(){
+  const qs = new URLSearchParams(window.location.search);
+  const [route,setRoute] = React.useState(qs.get('route') || 'landing');
+  const [params,setParams] = React.useState({});
+
+  function navigate(r, p){ setRoute(r); setParams(p || {}); if(r!=='app') window.scrollTo(0,0); }
+  function login(){ setRoute('app'); }
+  function logout(){ setRoute('landing'); setParams({}); }
+
+  if(route === 'landing') return <window.Landing onNavigate={navigate}/>;
+  if(route === 'signup') return <window.Signup onNavigate={navigate}/>;
+  if(route === 'verify') return <window.VerifyEmail onNavigate={navigate} params={params}/>;
+  if(route === 'login') return <window.Login onNavigate={navigate} onLogin={login} params={params}/>;
+  if(route === 'forgot') return <window.ForgotPassword onNavigate={navigate}/>;
+  if(route === 'reset') return <window.ResetPassword onNavigate={navigate}/>;
+  if(route === 'app') return <AppShell onLogout={logout} initialTab={qs.get('tab')} initialPlan={qs.get('plan')} initialModal={qs.get('modal')}/>;
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+</script>
+</body>
+</html>
