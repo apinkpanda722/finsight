@@ -128,7 +128,7 @@ npm test
 3. `assertExactRowIndexes`/`assertReconciliation`이 누락·중복·범위 밖 rowIndex와 합계 불일치를 각각 잡아내는지 테스트한다.
 4. `acquireProcessingLease`가 이미 유효한 lease를 가진 statement에는 `null`을 반환하고, 만료된 lease는 재획득 가능한지 DB 통합 테스트로 확인한다.
 5. `retryTransient`가 429/5xx만 재시도하고 refusal/max_tokens는 즉시 던지는지 테스트한다.
-6. 2,000행 fixture(quoted multiline 포함)로 전체 파이프라인을 1회 수동/자동 실행해 총 Anthropic 토큰과 소요 시간을 기록한다(이 값은 step 8/9의 비용·시간 상한 조정 근거가 된다).
+6. 2,000행 fixture(quoted multiline 포함)로 전체 파이프라인을 1회 수동/자동 실행해 총 Anthropic 토큰과 소요 시간을 기록한다(이 값은 step 9의 `maxDuration`/비용 상한 조정 근거가 된다).
 7. 결과에 따라 `phases/mvp/index.json`의 step 6 항목을 업데이트한다.
 
 ## 금지사항
