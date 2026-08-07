@@ -132,13 +132,14 @@ npm test        # 테스트 통과
 ### E. 실행
 
 ```bash
-python3 scripts/execute.py {task-name}        # 순차 실행
-python3 scripts/execute.py {task-name} --push  # 실행 후 push
+python3 scripts/execute.py {task-name}            # 순차 실행
+python3 scripts/execute.py {task-name} --push      # 실행 후 push (마지막 step 브랜치를 push)
+python3 scripts/execute.py {task-name} --steps N   # N개 step만 실행 후 정지 (토큰/리뷰 단위로 나눠 진행할 때)
 ```
 
 execute.py가 자동으로 처리하는 것:
 
-- `feat-{task-name}` 브랜치 생성/checkout
+- step마다 `feat-{task-name}-step{N}-{name}` 브랜치를 새로 생성 — 이전 step 브랜치 위에 순차적으로 쌓인다(stacked). resume 시 마지막으로 완료된 step의 브랜치에서 이어간다.
 - 가드레일 주입 — CLAUDE.md + docs/*.md 내용을 매 step 프롬프트에 포함
 - 컨텍스트 누적 — 완료된 step의 summary를 다음 step 프롬프트에 전달
 - 자가 교정 — 실패 시 최대 3회 재시도하며, 이전 에러 메시지를 프롬프트에 피드백
