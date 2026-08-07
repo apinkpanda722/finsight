@@ -13,7 +13,9 @@
     {
       "step": 1,
       "name": "supabase-schema",
-      "status": "pending"
+      "status": "blocked",
+      "started_at": "2026-08-07T17:55:02+0900",
+      "blocked_reason": "Supabase 프로젝트를 수동으로 생성하고 URL/키를 `.env`에 채워달라"
     },
     {
       "step": 2,
