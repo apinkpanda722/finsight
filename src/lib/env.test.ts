@@ -32,16 +32,38 @@ describe("env", () => {
     stubValidEnvironment()
     vi.stubEnv("ANTHROPIC_API_KEY", "")
 
-    await expect(importEnv()).rejects.toThrow(/ANTHROPIC_API_KEY/)
+    const { getServerEnv } = await importEnv()
+
+    expect(() => getServerEnv()).toThrow(/ANTHROPIC_API_KEY/)
   })
 
   it("returns a typed object when every required variable is valid", async () => {
     stubValidEnvironment()
 
-    const { env } = await importEnv()
+    const { getServerEnv } = await importEnv()
+    const env = getServerEnv()
 
     expect(env).toEqual(validEnvironment)
     expectTypeOf(env.POLAR_SERVER).toEqualTypeOf<"sandbox" | "production">()
     expectTypeOf(env.SUCCESS_URL).toBeString()
+  })
+
+  it("validates public Supabase values without requiring server secrets", async () => {
+    vi.stubEnv(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      validEnvironment.NEXT_PUBLIC_SUPABASE_URL
+    )
+    vi.stubEnv(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      validEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+
+    const { publicEnv } = await importEnv()
+
+    expect(publicEnv).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        validEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    })
   })
 })
