@@ -7,7 +7,8 @@
       "name": "project-setup",
       "status": "completed",
       "summary": "Next.js 15, shadcn/ui, Finsight 디자인 토큰, Vitest, zod 환경변수 검증 및 공통 TDD guard 예외를 구성했다.",
-      "started_at": "2026-08-07T17:40:55+0900"
+      "started_at": "2026-08-07T17:40:55+0900",
+      "completed_at": "2026-08-07T17:55:02+0900"
     },
     {
       "step": 1,
