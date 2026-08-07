@@ -53,9 +53,7 @@
     {
       "step": 6,
       "name": "claude-parsing-service",
-      "status": "blocked",
-      "started_at": "2026-08-07T20:51:50+0900",
-      "blocked_reason": "Supabase 라이브 processing lease 통합 테스트에서 .env의 SUPABASE_SERVICE_ROLE_KEY가 Invalid API key로 거부되어 service_role 전용 검증을 진행할 수 없다. Supabase Dashboard에서 유효한 service role key를 발급해 .env를 갱신해야 한다."
+      "status": "pending"
     },
     {
       "step": 7,
