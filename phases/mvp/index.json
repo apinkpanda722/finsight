@@ -37,7 +37,10 @@
     {
       "step": 4,
       "name": "polar-billing",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-07T20:12:56+0900",
+      "completed_at": "2026-08-07T20:31:06+0900",
+      "summary": "인증된 same-origin Polar checkout/portal, stale 방지 구독 webhook 동기화, 결제 성공 폴링과 요금제 관리 화면을 구현했다."
     },
     {
       "step": 5,
