@@ -339,9 +339,9 @@ class TestCheckoutBranch:
 
     def test_already_on_branch(self, executor):
         self._mock_git(executor, [
-            MagicMock(returncode=0, stdout="feat-mvp\n", stderr=""),
+            MagicMock(returncode=0, stdout="feat-mvp-step0-setup\n", stderr=""),
         ])
-        executor._checkout_branch()  # should return without checkout
+        executor._checkout_branch("feat-mvp-step0-setup")  # should return without checkout
 
     def test_branch_exists_checkout(self, executor):
         self._mock_git(executor, [
@@ -349,7 +349,7 @@ class TestCheckoutBranch:
             MagicMock(returncode=0, stdout="", stderr=""),
             MagicMock(returncode=0, stdout="", stderr=""),
         ])
-        executor._checkout_branch()
+        executor._checkout_branch("feat-mvp-step0-setup")
 
     def test_branch_not_exists_create(self, executor):
         self._mock_git(executor, [
@@ -357,7 +357,7 @@ class TestCheckoutBranch:
             MagicMock(returncode=1, stdout="", stderr="not found"),
             MagicMock(returncode=0, stdout="", stderr=""),
         ])
-        executor._checkout_branch()
+        executor._checkout_branch("feat-mvp-step0-setup")
 
     def test_checkout_fails_exits(self, executor):
         self._mock_git(executor, [
@@ -366,7 +366,7 @@ class TestCheckoutBranch:
             MagicMock(returncode=1, stdout="", stderr="dirty tree"),
         ])
         with pytest.raises(SystemExit) as exc_info:
-            executor._checkout_branch()
+            executor._checkout_branch("feat-mvp-step0-setup")
         assert exc_info.value.code == 1
 
     def test_no_git_exits(self, executor):
@@ -374,8 +374,44 @@ class TestCheckoutBranch:
             MagicMock(returncode=1, stdout="", stderr="not a git repo"),
         ])
         with pytest.raises(SystemExit) as exc_info:
-            executor._checkout_branch()
+            executor._checkout_branch("feat-mvp-step0-setup")
         assert exc_info.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# _step_branch_name / _checkout_base_branch / _checkout_step_branch
+# ---------------------------------------------------------------------------
+
+class TestStepBranchName:
+    def test_format(self, executor):
+        assert executor._step_branch_name(0, "project-setup") == "feat-mvp-step0-project-setup"
+        assert executor._step_branch_name(9, "deploy-production-hardening") == \
+            "feat-mvp-step9-deploy-production-hardening"
+
+
+class TestCheckoutBaseBranch:
+    def test_no_completed_steps_is_noop(self, executor, tmp_project, phase_dir):
+        index = json.loads((phase_dir / "index.json").read_text())
+        for s in index["steps"]:
+            s["status"] = "pending"
+        (phase_dir / "index.json").write_text(json.dumps(index))
+
+        with patch.object(executor, "_checkout_branch") as mock_checkout:
+            executor._checkout_base_branch()
+        mock_checkout.assert_not_called()
+
+    def test_resumes_last_completed_step_branch(self, executor):
+        # phase_dir 픽스처: step 0(setup),1(core) completed, step 2(ui) pending
+        with patch.object(executor, "_checkout_branch") as mock_checkout:
+            executor._checkout_base_branch()
+        mock_checkout.assert_called_once_with("feat-mvp-step1-core")
+
+
+class TestCheckoutStepBranch:
+    def test_delegates_to_checkout_branch(self, executor):
+        with patch.object(executor, "_checkout_branch") as mock_checkout:
+            executor._checkout_step_branch(3, "ui")
+        mock_checkout.assert_called_once_with("feat-mvp-step3-ui")
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +500,53 @@ class TestCommitStep:
         commit_msgs = [c[2] for c in calls if c[0] == "commit"]
         assert len(commit_msgs) == 1
         assert "chore" in commit_msgs[0]
+
+
+# ---------------------------------------------------------------------------
+# _finalize (mocked) — push는 하드코딩된 phase 브랜치가 아니라 현재(마지막 step) 브랜치를 써야 한다
+# ---------------------------------------------------------------------------
+
+class TestFinalize:
+    def _mark_all_completed(self, phase_dir):
+        index = json.loads((phase_dir / "index.json").read_text())
+        for s in index["steps"]:
+            s["status"] = "completed"
+        (phase_dir / "index.json").write_text(json.dumps(index))
+
+    def test_push_uses_current_branch(self, executor, phase_dir):
+        self._mark_all_completed(phase_dir)
+        executor._auto_push = True
+
+        responses = [
+            MagicMock(returncode=0, stdout="", stderr=""),                     # add -A
+            MagicMock(returncode=1, stdout="", stderr=""),                     # diff --cached --quiet (변경 있음)
+            MagicMock(returncode=0, stdout="", stderr=""),                     # commit
+            MagicMock(returncode=0, stdout="feat-mvp-step2-ui\n", stderr=""),  # rev-parse --abbrev-ref HEAD
+            MagicMock(returncode=0, stdout="", stderr=""),                     # push
+        ]
+        calls = []
+        def fake_git(*args):
+            calls.append(args)
+            return responses[len(calls) - 1]
+        executor._run_git = fake_git
+
+        executor._finalize()
+
+        assert calls[-1] == ("push", "-u", "origin", "feat-mvp-step2-ui")
+
+    def test_no_push_when_auto_push_false(self, executor, phase_dir):
+        self._mark_all_completed(phase_dir)
+        executor._auto_push = False
+
+        calls = []
+        def fake_git(*args):
+            calls.append(args)
+            return MagicMock(returncode=0, stdout="", stderr="")
+        executor._run_git = fake_git
+
+        executor._finalize()
+
+        assert not any(c[0] == "push" for c in calls)
 
 
 # ---------------------------------------------------------------------------

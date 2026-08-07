@@ -84,7 +84,7 @@ class StepExecutor:
         self._print_header()
         self._check_blockers()
         self._check_clean_worktree()
-        self._checkout_branch()
+        self._checkout_base_branch()
         guardrails = self._load_guardrails()
         self._ensure_created_at()
         self._execute_all_steps(guardrails, max_steps=max_steps)
@@ -114,9 +114,10 @@ class StepExecutor:
         cmd = ["git"] + list(args)
         return subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
 
-    def _checkout_branch(self):
-        branch = f"feat-{self._phase_name}"
+    def _step_branch_name(self, step_num: int, step_name: str) -> str:
+        return f"feat-{self._phase_name}-step{step_num}-{step_name}"
 
+    def _checkout_branch(self, branch: str):
         r = self._run_git("rev-parse", "--abbrev-ref", "HEAD")
         if r.returncode != 0:
             print(f"  ERROR: git을 사용할 수 없거나 git repo가 아닙니다.")
@@ -136,6 +137,19 @@ class StepExecutor:
             sys.exit(1)
 
         print(f"  Branch: {branch}")
+
+    def _checkout_base_branch(self):
+        """resume 시 마지막으로 완료된 step의 브랜치로 이동한다.
+        처음 실행(완료된 step 없음)이면 현재 브랜치를 그대로 base로 쓴다."""
+        index = self._read_json(self._index_file)
+        completed = [s for s in index["steps"] if s["status"] == "completed"]
+        if not completed:
+            return
+        last = max(completed, key=lambda s: s["step"])
+        self._checkout_branch(self._step_branch_name(last["step"], last["name"]))
+
+    def _checkout_step_branch(self, step_num: int, step_name: str):
+        self._checkout_branch(self._step_branch_name(step_num, step_name))
 
     def _check_clean_worktree(self):
         """git add -A가 step 커밋에 무관한 변경사항을 함께 쓸어담지 않도록,
@@ -336,6 +350,7 @@ class StepExecutor:
     def _execute_single_step(self, step: dict, guardrails: str) -> bool:
         """단일 step 실행 (재시도 포함). 완료되면 True, 실패/차단이면 False."""
         step_num, step_name = step["step"], step["name"]
+        self._checkout_step_branch(step_num, step_name)
         done = sum(1 for s in self._read_json(self._index_file)["steps"] if s["status"] == "completed")
         prev_error = None
 
@@ -445,7 +460,7 @@ class StepExecutor:
                 print(f"  ✓ {msg}")
 
         if self._auto_push:
-            branch = f"feat-{self._phase_name}"
+            branch = self._run_git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
             r = self._run_git("push", "-u", "origin", branch)
             if r.returncode != 0:
                 print(f"\n  ERROR: git push 실패: {r.stderr.strip()}")
