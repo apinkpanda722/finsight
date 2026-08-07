@@ -53,7 +53,9 @@
     {
       "step": 6,
       "name": "claude-parsing-service",
-      "status": "pending"
+      "status": "blocked",
+      "started_at": "2026-08-07T21:18:07+0900",
+      "blocked_reason": "2,000행 라이브 Claude 파이프라인 검증에서 ANTHROPIC_API_KEY가 401 authentication_error (invalid x-api-key)로 거부되었다. Anthropic Console에서 유효한 API 키를 발급해 .env의 ANTHROPIC_API_KEY를 갱신해야 한다."
     },
     {
       "step": 7,
