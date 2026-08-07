@@ -2,15 +2,58 @@
   "project": "Finsight",
   "phase": "mvp",
   "steps": [
-    { "step": 0, "name": "project-setup", "status": "pending" },
-    { "step": 1, "name": "supabase-schema", "status": "pending" },
-    { "step": 2, "name": "supabase-auth", "status": "pending" },
-    { "step": 3, "name": "landing-dashboard-shell", "status": "pending" },
-    { "step": 4, "name": "polar-billing", "status": "pending" },
-    { "step": 5, "name": "statement-upload", "status": "pending" },
-    { "step": 6, "name": "claude-parsing-service", "status": "pending" },
-    { "step": 7, "name": "dashboard-insights", "status": "pending" },
-    { "step": 8, "name": "integration-verification", "status": "pending" },
-    { "step": 9, "name": "deploy-production-hardening", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "project-setup",
+      "status": "completed",
+      "summary": "Next.js 15, shadcn/ui, Finsight 디자인 토큰, Vitest, zod 환경변수 검증 및 공통 TDD guard 예외를 구성했다.",
+      "started_at": "2026-08-07T17:40:55+0900"
+    },
+    {
+      "step": 1,
+      "name": "supabase-schema",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "supabase-auth",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "landing-dashboard-shell",
+      "status": "pending"
+    },
+    {
+      "step": 4,
+      "name": "polar-billing",
+      "status": "pending"
+    },
+    {
+      "step": 5,
+      "name": "statement-upload",
+      "status": "pending"
+    },
+    {
+      "step": 6,
+      "name": "claude-parsing-service",
+      "status": "pending"
+    },
+    {
+      "step": 7,
+      "name": "dashboard-insights",
+      "status": "pending"
+    },
+    {
+      "step": 8,
+      "name": "integration-verification",
+      "status": "pending"
+    },
+    {
+      "step": 9,
+      "name": "deploy-production-hardening",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-08-07T17:40:55+0900"
 }

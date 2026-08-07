@@ -21,6 +21,9 @@ is_exempt() {
     */src/components/ui/*|*/src/types/*|*/src/test/*|src/components/ui/*|src/types/*|src/test/*)
       return 0
       ;;
+    */src/lib/supabase/*|*/src/lib/polar/*|*/src/lib/anthropic/*|src/lib/supabase/*|src/lib/polar/*|src/lib/anthropic/*)
+      return 0
+      ;;
   esac
   [[ "$(basename -- "$file_path")" == "main.tsx" ]] && return 0
   return 1
