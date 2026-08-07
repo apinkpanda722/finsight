@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # PreToolUse guard for Bash: 위험한 명령어(rm -rf, force push, reset --hard, DROP TABLE)를 차단한다.
-# .claude/hooks 아래 Bash 매처와 동일한 정책을 Codex hook 스키마(exit code 2 + stderr)로 이식한 것.
+#
+# Claude Code와 Codex 둘 다 PreToolUse 호출 시 tool_input.command에 동일한 셸 커맨드 문자열을
+# stdin JSON으로 담아 주므로, 툴별 어댑터 없이 이 스크립트 하나를 양쪽 설정(.claude/settings.json,
+# .codex/config.toml)이 그대로 가리킨다.
 set -euo pipefail
 
 input=$(cat)
