@@ -375,6 +375,11 @@ export async function getStatementStatus(
     )
   }
 
+  const leaseExpired =
+    statement.status === "processing" &&
+    statement.processing_lease_expires_at !== null &&
+    new Date(statement.processing_lease_expires_at).getTime() < Date.now()
+
   return {
     statementId: statement.id,
     accountId: statement.account_id,
@@ -384,8 +389,66 @@ export async function getStatementStatus(
     errorMessage: statement.error_message,
     createdAt: statement.created_at,
     updatedAt: statement.updated_at,
-    retryable: false,
+    retryable: statement.status === "failed" || leaseExpired,
   }
+}
+
+export async function retryStatement(
+  userId: string,
+  statementId: string,
+  deps: StatementUploadDeps
+): Promise<boolean> {
+  const statement = await getOwnedStatement(userId, statementId, deps)
+  if (!statement) {
+    throw new StatementUploadError(
+      "not_found",
+      "명세서를 찾을 수 없습니다.",
+      404
+    )
+  }
+
+  const now = new Date()
+  const nowIso = now.toISOString()
+  const expired =
+    statement.status === "processing" &&
+    statement.processing_lease_expires_at !== null &&
+    new Date(statement.processing_lease_expires_at).getTime() < now.getTime()
+  if (statement.status !== "failed" && !expired) {
+    throw new StatementUploadError(
+      "conflict",
+      "현재 상태에서는 분석을 재시도할 수 없습니다.",
+      409
+    )
+  }
+
+  let update = deps.supabase
+    .from("uploaded_statements")
+    .update({
+      status: "pending",
+      processing_lease_expires_at: null,
+      failure_code: null,
+      error_message: null,
+      updated_at: nowIso,
+    })
+    .eq("id", statementId)
+    .eq("user_id", userId)
+    .eq("status", statement.status)
+
+  if (expired) {
+    update = update.lt("processing_lease_expires_at", nowIso)
+  }
+
+  const { data, error } = await update.select("id").maybeSingle()
+  if (error) throw internalError("명세서 재시도를 예약할 수 없습니다.")
+  if (!data) {
+    throw new StatementUploadError(
+      "conflict",
+      "명세서 상태가 변경되어 재시도할 수 없습니다.",
+      409
+    )
+  }
+
+  return true
 }
 
 export async function deleteOwnedStatement(

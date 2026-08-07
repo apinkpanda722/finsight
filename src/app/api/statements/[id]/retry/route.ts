@@ -6,7 +6,7 @@ import { createAnthropicClient } from "@/lib/anthropic/client"
 import { createServiceRoleClient } from "@/lib/supabase/server"
 import { parseStatement } from "@/services/statementParserService"
 import {
-  completeStatementUpload,
+  retryStatement,
   StatementUploadError,
 } from "@/services/statementUploadService"
 
@@ -33,19 +33,17 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   }
 
   const { id } = await context.params
-
   try {
-    const result = await completeStatementUpload(userId, id, {
-      supabase: createServiceRoleClient(),
-    })
-    if (result.status === "pending") {
-      after(() => processStatement(result.statementId))
-    }
-    return NextResponse.json(result, { status: 202 })
+    await retryStatement(userId, id, { supabase: createServiceRoleClient() })
+    after(() => processStatement(id))
+    return NextResponse.json(
+      { statementId: id, status: "pending" },
+      { status: 202 }
+    )
   } catch (error) {
     if (error instanceof StatementUploadError) {
       return apiError(error.code, error.message, error.httpStatus)
     }
-    return apiError("internal_error", "파일을 검증할 수 없습니다.", 500)
+    return apiError("internal_error", "분석을 재시도할 수 없습니다.", 500)
   }
 }

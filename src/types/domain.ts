@@ -8,6 +8,26 @@ export type ApiErrorCode =
   | "conflict"
   | "internal_error"
 
+export const TRANSACTION_CATEGORIES = [
+  "food_dining",
+  "groceries",
+  "transport",
+  "shopping",
+  "entertainment",
+  "utilities",
+  "housing",
+  "healthcare",
+  "education",
+  "travel",
+  "subscriptions",
+  "income",
+  "transfer",
+  "fees",
+  "other",
+] as const
+
+export type TransactionCategory = (typeof TRANSACTION_CATEGORIES)[number]
+
 export type StatementStatus =
   | "uploading"
   | "pending"

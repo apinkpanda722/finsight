@@ -35,7 +35,7 @@ export default async function UploadsPage() {
     supabase
       .from("uploaded_statements")
       .select(
-        "id, account_id, file_name, status, row_count, error_message, created_at, updated_at"
+        "id, account_id, file_name, status, row_count, error_message, processing_lease_expires_at, created_at, updated_at"
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
@@ -47,17 +47,25 @@ export default async function UploadsPage() {
 
   const plan = profileResult.data?.plan === "pro" ? "pro" : "free"
   const accounts = accountsResult.data ?? []
-  const statements = (statementsResult.data ?? []).map((statement) => ({
-    statementId: statement.id,
-    accountId: statement.account_id,
-    fileName: statement.file_name,
-    status: statementStatus(statement.status),
-    rowCount: statement.row_count,
-    errorMessage: statement.error_message,
-    createdAt: statement.created_at,
-    updatedAt: statement.updated_at,
-    retryable: false,
-  }))
+  const statements = (statementsResult.data ?? []).map((statement) => {
+    const status = statementStatus(statement.status)
+    const leaseExpired =
+      status === "processing" &&
+      statement.processing_lease_expires_at !== null &&
+      new Date(statement.processing_lease_expires_at).getTime() < Date.now()
+
+    return {
+      statementId: statement.id,
+      accountId: statement.account_id,
+      fileName: statement.file_name,
+      status,
+      rowCount: statement.row_count,
+      errorMessage: statement.error_message,
+      createdAt: statement.created_at,
+      updatedAt: statement.updated_at,
+      retryable: status === "failed" || leaseExpired,
+    }
+  })
 
   return (
     <main className="p-6 sm:p-10">

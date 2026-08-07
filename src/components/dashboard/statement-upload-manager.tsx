@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -90,12 +90,15 @@ export function StatusBadge({ status }: { status: StatementStatus }) {
 function StatementRow({
   statement,
   onDelete,
+  onRetry,
 }: {
   statement: UploadStatement
   onDelete: (statementId: string) => Promise<void>
+  onRetry: (statementId: string) => Promise<void>
 }) {
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
   async function confirmDelete() {
     setDeleting(true)
@@ -103,6 +106,15 @@ function StatementRow({
       await onDelete(statement.statementId)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  async function retry() {
+    setRetrying(true)
+    try {
+      await onRetry(statement.statementId)
+    } finally {
+      setRetrying(false)
     }
   }
 
@@ -162,15 +174,29 @@ function StatementRow({
             </Button>
           </>
         ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="text-muted-foreground"
-            onClick={() => setConfirming(true)}
-          >
-            삭제
-          </Button>
+          <>
+            {statement.retryable ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={retrying}
+                onClick={retry}
+              >
+                재시도
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="text-muted-foreground"
+              disabled={retrying}
+              onClick={() => setConfirming(true)}
+            >
+              삭제
+            </Button>
+          </>
         )}
       </div>
     </div>
@@ -197,46 +223,70 @@ export function StatementUploadManager({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
   const [activeStatementId, setActiveStatementId] = useState<string | null>(null)
+  const pollCountsRef = useRef(new Map<string, number>())
+  const pollingRequestsRef = useRef(new Set<string>())
 
   const activeAccount = useMemo(
     () => accounts.find((account) => account.id === selectedAccountId) ?? null,
     [accounts, selectedAccountId]
   )
 
-  useEffect(() => {
-    if (
-      !activeStatementId ||
-      (step !== "pending" && step !== "processing")
-    ) {
-      return
-    }
-
-    let pollCount = 0
-    let polling = false
-    const timer = window.setInterval(async () => {
-      if (polling || pollCount >= 150) return
-      polling = true
-      pollCount += 1
-
-      try {
-        const response = await fetch(`/api/statements/${activeStatementId}`)
-        if (!response.ok) return
-        const current = await readJson<StatementStatusResponse>(response)
-        setStep(current.status)
-        setStatements((items) =>
-          items.map((item) =>
-            item.statementId === current.statementId ? current : item
-          )
+  const pollingKey = useMemo(
+    () =>
+      statements
+        .filter(
+          (statement) =>
+            statement.status === "pending" || statement.status === "processing"
         )
-      } catch {
-        // A later poll can recover from a transient status request failure.
-      } finally {
-        polling = false
+        .map((statement) => statement.statementId)
+        .join(","),
+    [statements]
+  )
+
+  useEffect(() => {
+    const statementIds = pollingKey ? pollingKey.split(",") : []
+    if (statementIds.length === 0) return
+
+    const timer = window.setInterval(() => {
+      for (const statementId of statementIds) {
+        const pollCount = pollCountsRef.current.get(statementId) ?? 0
+        if (
+          pollCount >= 150 ||
+          pollingRequestsRef.current.has(statementId)
+        ) {
+          continue
+        }
+
+        pollCountsRef.current.set(statementId, pollCount + 1)
+        pollingRequestsRef.current.add(statementId)
+        void (async () => {
+          try {
+            const response = await fetch(`/api/statements/${statementId}`)
+            if (!response.ok) return
+            const current = await readJson<StatementStatusResponse>(response)
+            if (statementId === activeStatementId) setStep(current.status)
+            if (
+              current.status !== "pending" &&
+              current.status !== "processing"
+            ) {
+              pollCountsRef.current.delete(statementId)
+            }
+            setStatements((items) =>
+              items.map((item) =>
+                item.statementId === current.statementId ? current : item
+              )
+            )
+          } catch {
+            // A later poll can recover from a transient status request failure.
+          } finally {
+            pollingRequestsRef.current.delete(statementId)
+          }
+        })()
       }
     }, 2_000)
 
     return () => window.clearInterval(timer)
-  }, [activeStatementId, step])
+  }, [activeStatementId, pollingKey])
 
   function resetUpload() {
     setFile(null)
@@ -427,6 +477,34 @@ export function StatementUploadManager({
     )
   }
 
+  async function retryStatement(statementId: string) {
+    setPageError(null)
+    const response = await fetch(`/api/statements/${statementId}/retry`, {
+      method: "POST",
+    })
+    if (!response.ok) {
+      setPageError("분석을 재시도할 수 없습니다. 상태를 새로 확인해주세요.")
+      return
+    }
+
+    setStatements((items) =>
+      items.map((item) =>
+        item.statementId === statementId
+          ? {
+              ...item,
+              status: "pending",
+              retryable: false,
+              errorMessage: null,
+              updatedAt: new Date().toISOString(),
+            }
+          : item
+      )
+    )
+    pollCountsRef.current.set(statementId, 0)
+    setActiveStatementId(statementId)
+    setStep("pending")
+  }
+
   return (
     <>
       <div className="mb-6 flex flex-wrap gap-2" aria-label="계좌 선택">
@@ -515,6 +593,7 @@ export function StatementUploadManager({
               key={statement.statementId}
               statement={statement}
               onDelete={deleteStatement}
+              onRetry={retryStatement}
             />
           ))
         )}
