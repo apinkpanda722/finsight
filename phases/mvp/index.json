@@ -29,7 +29,9 @@
     {
       "step": 3,
       "name": "landing-dashboard-shell",
-      "status": "pending"
+      "status": "blocked",
+      "started_at": "2026-08-07T18:30:25+0900",
+      "blocked_reason": "lint/build/test와 비인증 로컬 네비게이션은 통과했으나, 테스트 계정 인증 흐름 검증에 필요한 SUPABASE_SERVICE_ROLE_KEY가 유효하지 않아 Supabase Auth가 401 Invalid API key를 반환했다. Supabase Dashboard에서 service_role 키를 발급해 .env에 설정해야 한다."
     },
     {
       "step": 4,

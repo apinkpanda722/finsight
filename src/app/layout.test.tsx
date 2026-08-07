@@ -13,7 +13,7 @@ vi.mock("next/font/google", () => ({
 }))
 vi.mock("./globals.css", () => ({}))
 
-import RootLayout from "./layout"
+import RootLayout, { metadata } from "./layout"
 
 describe("RootLayout", () => {
   it("loads the finsight font variables", () => {
@@ -34,9 +34,14 @@ describe("RootLayout", () => {
       lang: string
     }>
 
-    expect(layout.props.lang).toBe("en")
+    expect(layout.props.lang).toBe("ko")
     expect(layout.props.className).toContain("inter-font")
     expect(layout.props.className).toContain("jetbrains-mono-font")
     expect(layout.props.children.props.className).toBe("antialiased")
+  })
+
+  it("uses Finsight metadata", () => {
+    expect(metadata.title).toBe("Finsight")
+    expect(metadata.description).toContain("CSV")
   })
 })
