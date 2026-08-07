@@ -1,0 +1,28 @@
+# 프로젝트 레벨 Codex hook 설정. `.claude/settings.json`의 하네스 가드레일을
+# Codex CLI의 hook 스키마(PreToolUse/Stop, exit code 2 + stderr 컨벤션)로 이식한 것.
+
+[[hooks.PreToolUse]]
+matcher = "Bash"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = 'bash "$(git rev-parse --show-toplevel)/.codex/hooks/dangerous-command-guard.sh"'
+timeout = 5
+statusMessage = "위험한 명령어 검사 중"
+
+[[hooks.PreToolUse]]
+matcher = "apply_patch"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = 'bash "$(git rev-parse --show-toplevel)/.codex/hooks/tdd-guard.sh"'
+timeout = 5
+statusMessage = "TDD 정책 검사 중"
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = 'bash "$(git rev-parse --show-toplevel)/.codex/hooks/verify-before-stop.sh"'
+timeout = 300
+statusMessage = "lint/build/test 실행 중"
