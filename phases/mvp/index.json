@@ -61,7 +61,10 @@
     {
       "step": 7,
       "name": "dashboard-insights",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-07T22:00:32+0900",
+      "completed_at": "2026-08-07T22:11:36+0900",
+      "summary": "RLS 기반 계좌별 거래 조회, 순수 함수 지출 집계, div 기반 월별 추이와 Free 히스토리 잠금 배너를 구현했다."
     },
     {
       "step": 8,
