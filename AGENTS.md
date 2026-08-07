@@ -25,7 +25,7 @@
 - 사용자 소유 리소스를 참조하는 테이블 간에는 `(user_id, id)` unique + composite FK를 사용해 service_role 코드 버그로도 타 사용자 데이터가 연결될 수 없게 한다.
 
 ## 개발 프로세스
-- CRITICAL: 새 기능 구현 시 반드시 테스트를 먼저 작성하고, 테스트가 통과하는 구현을 작성할 것 (TDD). `.codex/hooks/tdd-guard.sh`가 PreToolUse(`apply_patch`) 훅으로 등록되어 `src/**/*.ts(x)` 수정 전 동일 이름 테스트 파일 존재를 강제한다(`.codex/config.toml` 참고). SDK 인스턴스화 전용 래퍼(`lib/{supabase,polar,anthropic}/*`)는 예외.
+- CRITICAL: 새 기능 구현 시 반드시 테스트를 먼저 작성하고, 테스트가 통과하는 구현을 작성할 것 (TDD). `scripts/hooks/tdd-guard-codex.sh`(Codex hook 어댑터, `.codex/config.toml`이 PreToolUse `apply_patch`로 등록)가 `src/**/*.ts(x)` 수정 전 동일 이름 테스트 파일 존재를 강제한다. 실제 예외 규칙은 `scripts/hooks/tdd-guard-core.sh`에 있다(Claude Code용 어댑터 `tdd-guard-claude.sh`와 공유). SDK 인스턴스화 전용 래퍼(`lib/{supabase,polar,anthropic}/*`)는 예외.
 - 커밋 메시지는 conventional commits 형식을 따를 것 (feat:, fix:, docs:, refactor:)
 
 ## 명령어

@@ -5,7 +5,7 @@
 - `/CLAUDE.md`
 - `/docs/ARCHITECTURE.md`
 - `/docs/ADR.md`
-- `/.claude/hooks/tdd-guard.sh` (어떤 경로가 test-first 예외인지 확인)
+- `/scripts/hooks/tdd-guard-core.sh` (어떤 경로가 test-first 예외인지 확인)
 - `.claude/skills/finsight-design-system/references/prototype/auth-screens.jsx` (인증 화면 레이아웃 참조 — `finsight-design-system` 스킬 참고)
 - step 0/1에서 만들어진 `src/lib/env.ts`, `src/types/supabase.ts`, `.env.example`
 

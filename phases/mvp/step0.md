@@ -8,7 +8,7 @@
 - `/docs/ARCHITECTURE.md`
 - `/docs/ADR.md` (특히 ADR-001: Next.js 15 고정 이유)
 - `/docs/DESIGN.md` (디자인 철학 — `finsight-design-system` 스킬이 자동으로 참고하게 하거나 직접 읽는다)
-- `/.claude/hooks/tdd-guard.sh`
+- `/scripts/hooks/tdd-guard-core.sh` (TDD 예외 규칙의 유일한 소스 — `.claude`/`.codex` 둘 다 이 스크립트를 공유한다)
 
 이 저장소는 현재 애플리케이션 코드가 없는 빈 상태다(`docs/`, `.claude/`, `phases/`, `scripts/`, `plan.md` 등 준비 문서만 있음). 이 step은 Next.js 프로젝트를 처음부터 스캐폴딩한다.
 
@@ -69,7 +69,7 @@ Git에 커밋되는 템플릿이다. 실제 값이 든 `.env`는 이미 `.gitign
 
 ### 7. TDD guard 예외 확정 반영
 
-`.claude/hooks/tdd-guard.sh`의 `case "$file_path" in ... esac` 블록에 아래 세 경로를 **기존 항목(`src/components/ui/*`, `src/types/*`, `src/test/*`)에 추가**한다 — 순서를 바꾸거나 기존 항목을 지우지 마라:
+`scripts/hooks/tdd-guard-core.sh`의 `is_exempt()` 함수 안 `case` 블록에 아래 세 경로를 **기존 항목(`src/components/ui/*`, `src/types/*`, `src/test/*`)에 추가**한다 — 순서를 바꾸거나 기존 항목을 지우지 마라. 이 파일이 `.claude`(Write|Edit)와 `.codex`(apply_patch) 양쪽 hook이 공유하는 TDD 예외 정책의 유일한 소스이므로, 여기 한 곳만 고치면 두 툴 모두에 반영된다.
 
 ```
 */src/lib/supabase/*|*/src/lib/polar/*|*/src/lib/anthropic/*|src/lib/supabase/*|src/lib/polar/*|src/lib/anthropic/*)
@@ -90,7 +90,7 @@ npm test
 1. 위 AC 커맨드를 전부 실행해 통과하는지 확인한다.
 2. `npx shadcn@latest add ...`로 추가된 컴포넌트가 `src/components/ui/`에 있는지 확인한다.
 2-1. `globals.css`에 `.claude/skills/finsight-design-system/references/tokens/colors.css`의 값(`--color-primary: #1C4ED8` 등)이 shadcn 변수로 반영됐는지, `button.tsx`/`input.tsx`가 `rounded-full`을 쓰는지 확인한다.
-3. `.claude/hooks/tdd-guard.sh`에 새 경로가 추가됐는지, 기존 예외/로직이 그대로인지 확인한다(`diff` 또는 `git diff`로 검토).
+3. `scripts/hooks/tdd-guard-core.sh`에 새 경로가 추가됐는지, 기존 예외/로직이 그대로인지 확인한다(`diff` 또는 `git diff`로 검토).
 4. `src/lib/env.test.ts`가 `src/lib/env.ts`보다 먼저 작성됐는지(git 히스토리 또는 커밋 순서상) 확인한다.
 5. 결과에 따라 `phases/mvp/index.json`의 step 0 항목을 업데이트한다.
 
@@ -100,6 +100,6 @@ npm test
 - `.claude/skills/finsight-design-system/references/tokens/*.css`에 없는 색상·radius 값을 임의로 만들어 쓰지 마라 — 이유: finsight는 악센트 컬러가 Deep Azure 하나뿐인 근접 무채색 디자인이다. 새 색이 필요해 보이면 토큰에 있는 값 중 가장 가까운 것을 쓴다.
 - 위에 나열한 shadcn 컴포넌트 외 다른 컴포넌트를 추가하지 마라 — 이유: 필요할 때 해당 기능을 구현하는 step에서 추가하는 게 원칙이다.
 - `lib/supabase`, `lib/polar`, `lib/anthropic`, `services/`, `app/api/` 등 실제 기능 코드를 이 step에서 구현하지 마라 — 이유: 이후 step의 범위이며, 이 step은 스캐폴딩과 tdd-guard 설정만 다룬다.
-- `tdd-guard.sh`의 기존 예외 항목(`src/components/ui/*`, `src/types/*`, `src/test/*`, `main.tsx`, `*.d.ts`)을 지우거나 순서를 바꾸지 마라 — 이유: 다른 step이 이 동작에 의존한다.
+- `scripts/hooks/tdd-guard-core.sh`의 기존 예외 항목(`src/components/ui/*`, `src/types/*`, `src/test/*`, `main.tsx`, `*.d.ts`)을 지우거나 순서를 바꾸지 마라 — 이유: 다른 step이 이 동작에 의존한다.
 - `.env`(실제 값이 든 로컬 파일)를 읽거나 커밋하지 마라 — 이유: 민감한 값이 들어있고 이미 gitignore 처리돼 있다.
 - 기존 테스트를 깨뜨리지 마라.
