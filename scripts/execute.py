@@ -80,15 +80,18 @@ class StepExecutor:
         self._phase_name = idx.get("phase", phase_dir_name)
         self._total = len(idx["steps"])
 
-    def run(self):
+    def run(self, max_steps: Optional[int] = None):
         self._print_header()
         self._check_blockers()
         self._check_clean_worktree()
         self._checkout_branch()
         guardrails = self._load_guardrails()
         self._ensure_created_at()
-        self._execute_all_steps(guardrails)
-        self._finalize()
+        self._execute_all_steps(guardrails, max_steps=max_steps)
+        if self._all_steps_completed():
+            self._finalize()
+        else:
+            print(f"\n  {max_steps}개 step 실행 후 중단했습니다. 이어서 실행하려면 같은 명령을 다시 실행하세요.")
 
     # --- timestamps ---
 
@@ -401,8 +404,13 @@ class StepExecutor:
 
         return False  # unreachable
 
-    def _execute_all_steps(self, guardrails: str):
+    def _execute_all_steps(self, guardrails: str, max_steps: Optional[int] = None):
+        executed = 0
         while True:
+            if max_steps is not None and executed >= max_steps:
+                print(f"\n  --steps {max_steps} 제한에 도달해 중단합니다.")
+                return
+
             index = self._read_json(self._index_file)
             pending = next((s for s in index["steps"] if s["status"] == "pending"), None)
             if pending is None:
@@ -417,6 +425,11 @@ class StepExecutor:
                     break
 
             self._execute_single_step(pending, guardrails)
+            executed += 1
+
+    def _all_steps_completed(self) -> bool:
+        index = self._read_json(self._index_file)
+        return all(s["status"] == "completed" for s in index["steps"])
 
     def _finalize(self):
         index = self._read_json(self._index_file)
@@ -448,9 +461,10 @@ def main():
     parser = argparse.ArgumentParser(description="Harness Step Executor")
     parser.add_argument("phase_dir", help="Phase directory name (e.g. 0-mvp)")
     parser.add_argument("--push", action="store_true", help="Push branch after completion")
+    parser.add_argument("--steps", type=int, default=None, help="한 번에 실행할 step 개수 제한 (기본: 전부)")
     args = parser.parse_args()
 
-    StepExecutor(args.phase_dir, auto_push=args.push).run()
+    StepExecutor(args.phase_dir, auto_push=args.push).run(max_steps=args.steps)
 
 
 if __name__ == "__main__":

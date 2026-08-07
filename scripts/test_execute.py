@@ -519,6 +519,64 @@ class TestInvokeCodex:
 
 
 # ---------------------------------------------------------------------------
+# _all_steps_completed / _execute_all_steps의 max_steps 제한
+# ---------------------------------------------------------------------------
+
+class TestAllStepsCompleted:
+    def test_false_when_any_pending(self, executor):
+        # phase_dir 픽스처: step 0,1 completed, step 2 pending
+        assert executor._all_steps_completed() is False
+
+    def test_true_when_all_completed(self, executor, phase_dir):
+        index = json.loads((phase_dir / "index.json").read_text())
+        for s in index["steps"]:
+            s["status"] = "completed"
+        (phase_dir / "index.json").write_text(json.dumps(index))
+
+        assert executor._all_steps_completed() is True
+
+
+class TestExecuteAllStepsMaxSteps:
+    @staticmethod
+    def _fake_execute_single_step(phase_dir, calls):
+        def _run(step, guardrails):
+            calls.append(step["step"])
+            index = json.loads((phase_dir / "index.json").read_text())
+            for s in index["steps"]:
+                if s["step"] == step["step"]:
+                    s["status"] = "completed"
+            (phase_dir / "index.json").write_text(json.dumps(index))
+            return True
+        return _run
+
+    def test_stops_after_max_steps(self, executor, phase_dir):
+        index = json.loads((phase_dir / "index.json").read_text())
+        index["steps"].append({"step": 3, "name": "extra", "status": "pending"})
+        (phase_dir / "index.json").write_text(json.dumps(index))
+
+        calls = []
+        with patch.object(executor, "_execute_single_step",
+                           side_effect=self._fake_execute_single_step(phase_dir, calls)):
+            executor._execute_all_steps("guardrails", max_steps=1)
+
+        assert calls == [2]
+        assert executor._all_steps_completed() is False
+
+    def test_no_limit_runs_until_no_pending(self, executor, phase_dir):
+        index = json.loads((phase_dir / "index.json").read_text())
+        index["steps"].append({"step": 3, "name": "extra", "status": "pending"})
+        (phase_dir / "index.json").write_text(json.dumps(index))
+
+        calls = []
+        with patch.object(executor, "_execute_single_step",
+                           side_effect=self._fake_execute_single_step(phase_dir, calls)):
+            executor._execute_all_steps("guardrails", max_steps=None)
+
+        assert calls == [2, 3]
+        assert executor._all_steps_completed() is True
+
+
+# ---------------------------------------------------------------------------
 # progress_indicator (= 이전 Spinner)
 # ---------------------------------------------------------------------------
 
@@ -561,6 +619,26 @@ class TestMainCli:
                 with pytest.raises(SystemExit) as exc_info:
                     ex.main()
                 assert exc_info.value.code == 1
+
+    def test_steps_flag_forwarded_to_run(self, tmp_project):
+        d = tmp_project / "phases" / "p"
+        d.mkdir()
+        (d / "index.json").write_text(json.dumps({"project": "T", "phase": "p", "steps": []}))
+        with patch("sys.argv", ["execute.py", "p", "--steps", "1"]):
+            with patch.object(ex, "ROOT", tmp_project):
+                with patch.object(ex.StepExecutor, "run") as mock_run:
+                    ex.main()
+        mock_run.assert_called_once_with(max_steps=1)
+
+    def test_no_steps_flag_defaults_to_none(self, tmp_project):
+        d = tmp_project / "phases" / "p"
+        d.mkdir()
+        (d / "index.json").write_text(json.dumps({"project": "T", "phase": "p", "steps": []}))
+        with patch("sys.argv", ["execute.py", "p"]):
+            with patch.object(ex, "ROOT", tmp_project):
+                with patch.object(ex.StepExecutor, "run") as mock_run:
+                    ex.main()
+        mock_run.assert_called_once_with(max_steps=None)
 
 
 # ---------------------------------------------------------------------------
