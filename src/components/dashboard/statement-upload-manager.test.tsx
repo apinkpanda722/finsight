@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -242,6 +242,74 @@ describe("StatementUploadManager", () => {
     expect(fetch).toHaveBeenCalledWith("/api/statements/statement-1", {
       method: "DELETE",
     })
+  })
+
+  it("shows a retry action and returns a failed statement to pending", async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ statementId: "statement-1", status: "pending" }),
+        { status: 202, headers: { "content-type": "application/json" } }
+      )
+    )
+    render(
+      <StatementUploadManager
+        plan="pro"
+        initialAccounts={accounts}
+        initialStatements={[
+          {
+            ...completedStatement,
+            status: "failed",
+            errorMessage: "분류를 완료할 수 없습니다.",
+            retryable: true,
+          },
+        ]}
+      />
+    )
+
+    const row = screen.getByTestId("statement-statement-1")
+    await user.click(within(row).getByRole("button", { name: "재시도" }))
+
+    await waitFor(() => {
+      expect(within(row).getByText("대기 중")).toBeInTheDocument()
+    })
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/statements/statement-1/retry",
+      { method: "POST" }
+    )
+    expect(within(row).queryByRole("button", { name: "재시도" })).toBeNull()
+  })
+
+  it("polls existing in-progress statements every 2 seconds at most 150 times", async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...completedStatement,
+          status: "processing",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    )
+
+    render(
+      <StatementUploadManager
+        plan="pro"
+        initialAccounts={accounts}
+        initialStatements={[
+          { ...completedStatement, status: "processing" },
+        ]}
+      />
+    )
+
+    await act(() => vi.advanceTimersByTimeAsync(1_999))
+    expect(fetchMock).not.toHaveBeenCalled()
+    await act(() => vi.advanceTimersByTimeAsync(1))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await act(() => vi.advanceTimersByTimeAsync(300_000))
+    expect(fetchMock).toHaveBeenCalledTimes(150)
+    vi.useRealTimers()
   })
 
   it("renders untrusted statement text as plain content", () => {

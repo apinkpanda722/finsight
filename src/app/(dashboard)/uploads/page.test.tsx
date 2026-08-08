@@ -60,6 +60,7 @@ beforeEach(() => {
                 status: "completed",
                 row_count: 12,
                 error_message: null,
+                processing_lease_expires_at: null,
                 created_at: "2026-08-07T10:00:00.000Z",
                 updated_at: "2026-08-07T10:00:00.000Z",
               },

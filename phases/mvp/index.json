@@ -53,7 +53,10 @@
     {
       "step": 6,
       "name": "claude-parsing-service",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-07T21:46:14+0900",
+      "completed_at": "2026-08-07T22:00:32+0900",
+      "summary": "결정론적 컬럼 매핑·금액 변환, 100행 Claude 카테고리 분류, processing lease·재시도·폴링 UI를 구현하고 2,000행 라이브 파이프라인(21요청, 입력 97,483·출력 38,076 tokens, 279.426초)을 검증했다."
     },
     {
       "step": 7,

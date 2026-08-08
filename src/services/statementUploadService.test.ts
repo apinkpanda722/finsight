@@ -6,6 +6,7 @@ import {
   getStatementStatus,
   initStatementUpload,
   reissueUploadUrl,
+  retryStatement,
 } from "./statementUploadService"
 
 const USER_ID = "8a1ca0d4-0a18-4fa5-b984-0a34eb1d6271"
@@ -296,7 +297,7 @@ describe("completeStatementUpload", () => {
 })
 
 describe("statement reads and deletion", () => {
-  it("returns a status response with retry disabled for this step", async () => {
+  it("marks failed and expired-processing statements as retryable", async () => {
     const db = makeSupabase({
       ownerResults: [
         {
@@ -316,9 +317,26 @@ describe("statement reads and deletion", () => {
     ).resolves.toMatchObject({
       statementId: STATEMENT_ID,
       status: "failed",
-      retryable: false,
+      retryable: true,
       errorMessage: "CSV 구조를 읽을 수 없습니다.",
     })
+
+    const expired = makeSupabase({
+      ownerResults: [
+        {
+          data: statement({
+            status: "processing",
+            processing_lease_expires_at: "2026-08-07T09:00:00.000Z",
+          }),
+          error: null,
+        },
+      ],
+    })
+    await expect(
+      getStatementStatus(USER_ID, STATEMENT_ID, {
+        supabase: expired.supabase as never,
+      })
+    ).resolves.toMatchObject({ retryable: true })
   })
 
   it("continues deleting the DB row when the Storage object is already absent", async () => {
@@ -340,5 +358,63 @@ describe("statement reads and deletion", () => {
     expect(db.deleteFirstEq).toHaveBeenCalledWith("id", STATEMENT_ID)
     expect(db.deleteSecondEq).toHaveBeenCalledWith("user_id", USER_ID)
     expect(db.from).not.toHaveBeenCalledWith("upload_usage")
+  })
+})
+
+describe("retryStatement", () => {
+  function makeRetrySupabase(current: Record<string, unknown>, retried = true) {
+    const ownerMaybeSingle = vi.fn().mockResolvedValue({ data: current, error: null })
+    const ownerSecondEq = vi.fn().mockReturnValue({ maybeSingle: ownerMaybeSingle })
+    const ownerFirstEq = vi.fn().mockReturnValue({ eq: ownerSecondEq })
+    const select = vi.fn().mockReturnValue({ eq: ownerFirstEq })
+
+    const updateMaybeSingle = vi.fn().mockResolvedValue({
+      data: retried ? { id: STATEMENT_ID } : null,
+      error: null,
+    })
+    const updateBuilder = {
+      eq: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnValue({ maybeSingle: updateMaybeSingle }),
+    }
+    const update = vi.fn().mockReturnValue(updateBuilder)
+    const from = vi
+      .fn()
+      .mockReturnValueOnce({ select })
+      .mockReturnValueOnce({ update })
+
+    return { supabase: { from }, update, updateBuilder }
+  }
+
+  it("moves an owned failed statement back to pending without resetting attempts", async () => {
+    const db = makeRetrySupabase(
+      statement({ status: "failed", parse_attempt_count: 3 })
+    )
+
+    await expect(
+      retryStatement(USER_ID, STATEMENT_ID, { supabase: db.supabase as never })
+    ).resolves.toBe(true)
+
+    expect(db.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ parse_attempt_count: expect.anything() })
+    )
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "pending",
+        processing_lease_expires_at: null,
+        failure_code: null,
+        error_message: null,
+      })
+    )
+    expect(db.updateBuilder.eq).toHaveBeenCalledWith("status", "failed")
+  })
+
+  it("rejects a statement whose state is not retryable", async () => {
+    const db = makeRetrySupabase(statement({ status: "completed" }))
+
+    await expect(
+      retryStatement(USER_ID, STATEMENT_ID, { supabase: db.supabase as never })
+    ).rejects.toMatchObject({ code: "conflict", httpStatus: 409 })
+    expect(db.update).not.toHaveBeenCalled()
   })
 })
