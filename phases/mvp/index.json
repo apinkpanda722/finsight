@@ -21,7 +21,10 @@
     {
       "step": 2,
       "name": "supabase-auth",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-07T18:14:07+0900",
+      "completed_at": "2026-08-07T18:30:25+0900",
+      "summary": "Supabase SSR 브라우저/서버 클라이언트와 쿠키 동기화 middleware, 안전한 returnTo 검증, 이메일 가입·로그인·인증 재발송·비밀번호 재설정 화면 및 PKCE callback, dashboard 이중 인증 가드를 구현했다."
     },
     {
       "step": 3,
