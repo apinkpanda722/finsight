@@ -56,6 +56,7 @@ type StatementUploadManagerProps = {
   plan: "free" | "pro"
   initialAccounts: UploadAccount[]
   initialStatements: UploadStatement[]
+  initialUploadOpen?: boolean
 }
 
 function formatUploadedAt(value: string): string {
@@ -207,6 +208,7 @@ export function StatementUploadManager({
   plan,
   initialAccounts,
   initialStatements,
+  initialUploadOpen = false,
 }: StatementUploadManagerProps) {
   const [accounts, setAccounts] = useState(initialAccounts)
   const [statements, setStatements] = useState(initialStatements)
@@ -214,7 +216,7 @@ export function StatementUploadManager({
     initialAccounts[0]?.id ?? ""
   )
   const [newAccountLabel, setNewAccountLabel] = useState("")
-  const [uploadOpen, setUploadOpen] = useState(false)
+  const [uploadOpen, setUploadOpen] = useState(initialUploadOpen)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [consent, setConsent] = useState(false)

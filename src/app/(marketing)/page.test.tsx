@@ -10,7 +10,9 @@ describe("LandingPage", () => {
     const startLinks = screen.getAllByRole("link", { name: "무료로 시작하기" })
 
     expect(startLinks).toHaveLength(2)
-    startLinks.forEach((link) => expect(link).toHaveAttribute("href", "/login"))
+    startLinks.forEach((link) =>
+      expect(link).toHaveAttribute("href", "/login?view=signup")
+    )
   })
 
   it("removes the closing CTA section in favor of plan-card CTAs", () => {
@@ -26,11 +28,11 @@ describe("LandingPage", () => {
 
     expect(screen.getByRole("link", { name: "Free로 시작" })).toHaveAttribute(
       "href",
-      "/login"
+      "/login?view=signup"
     )
     expect(screen.getByRole("link", { name: "Pro로 시작" })).toHaveAttribute(
       "href",
-      "/login?returnTo=/settings/billing"
+      "/login?view=signup&returnTo=/settings/billing"
     )
   })
 

@@ -79,7 +79,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText("첫 CSV를 업로드해보세요")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "CSV 업로드하기" })).toHaveAttribute(
       "href",
-      "/uploads"
+      "/uploads?upload=1"
     )
     expect(screen.queryByText(/mock/i)).not.toBeInTheDocument()
   })

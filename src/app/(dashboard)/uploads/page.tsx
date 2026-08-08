@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase/server"
 import { withClockSkewRetry } from "@/lib/supabase/retry"
 import type { StatementStatus } from "@/types/domain"
 
+type UploadsPageProps = {
+  searchParams?: Promise<{
+    upload?: string | string[]
+  }>
+}
+
 function statementStatus(value: string): StatementStatus {
   if (
     value === "uploading" ||
@@ -18,7 +24,9 @@ function statementStatus(value: string): StatementStatus {
   throw new Error("Unknown statement status")
 }
 
-export default async function UploadsPage() {
+export default async function UploadsPage({
+  searchParams,
+}: UploadsPageProps = {}) {
   const userId = await requireUserId()
   const supabase = await createClient()
 
@@ -49,6 +57,8 @@ export default async function UploadsPage() {
   }
 
   const plan = profileResult.data?.plan === "pro" ? "pro" : "free"
+  const requestedUpload = (await searchParams)?.upload
+  const initialUploadOpen = requestedUpload === "1"
   const accounts = accountsResult.data ?? []
   const statements = (statementsResult.data ?? []).map((statement) => {
     const status = statementStatus(statement.status)
@@ -87,6 +97,7 @@ export default async function UploadsPage() {
           plan={plan}
           initialAccounts={accounts}
           initialStatements={statements}
+          initialUploadOpen={initialUploadOpen}
         />
       </div>
     </main>

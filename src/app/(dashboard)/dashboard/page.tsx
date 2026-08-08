@@ -33,7 +33,7 @@ function EmptyDashboard() {
             첫 CSV를 업로드해보세요
           </p>
           <Button asChild className="mt-8 h-12 px-6 text-base">
-            <Link href="/uploads">CSV 업로드하기</Link>
+            <Link href="/uploads?upload=1">CSV 업로드하기</Link>
           </Button>
         </CardContent>
       </Card>

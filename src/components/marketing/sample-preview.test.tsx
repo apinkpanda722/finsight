@@ -70,6 +70,14 @@ describe("SamplePreview", () => {
     })
   })
 
+  it("offers a second CTA to convert the moment interest is highest", () => {
+    render(<SamplePreview />)
+
+    expect(
+      screen.getByRole("link", { name: "내 명세서로 확인하기" })
+    ).toHaveAttribute("href", "/login?view=signup")
+  })
+
   it("does not mention features finsight does not build in this MVP", () => {
     render(<SamplePreview />)
 
