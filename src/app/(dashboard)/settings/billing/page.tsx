@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { requireUserId } from "@/lib/api/auth"
 import { createClient } from "@/lib/supabase/server"
+import { withClockSkewRetry } from "@/lib/supabase/retry"
 
 function formatPeriodEnd(value: string | null): string {
   if (!value) return "없음"
@@ -15,13 +16,15 @@ function formatPeriodEnd(value: string | null): string {
 export default async function BillingSettingsPage() {
   const userId = await requireUserId()
   const supabase = await createClient()
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select(
-      "plan, subscription_status, current_period_end, cancel_at_period_end"
-    )
-    .eq("id", userId)
-    .maybeSingle()
+  const { data: profile, error } = await withClockSkewRetry(() =>
+    supabase
+      .from("profiles")
+      .select(
+        "plan, subscription_status, current_period_end, cancel_at_period_end"
+      )
+      .eq("id", userId)
+      .maybeSingle()
+  )
 
   if (error) throw error
 

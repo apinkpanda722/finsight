@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 import { PlanBadge, type Plan } from "@/components/dashboard/plan-badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
+import { withClockSkewRetry } from "@/lib/supabase/retry"
 
 const navigation = [
   { href: "/dashboard", label: "개요" },
@@ -33,11 +34,9 @@ export default async function DashboardLayout({
     return null
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("id", data.claims.sub)
-    .maybeSingle()
+  const { data: profile } = await withClockSkewRetry(() =>
+    supabase.from("profiles").select("plan").eq("id", data.claims.sub).maybeSingle()
+  )
   const plan: Plan = profile?.plan === "pro" ? "pro" : "free"
 
   return (

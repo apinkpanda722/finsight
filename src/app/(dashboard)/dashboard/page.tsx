@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { requireUserId } from "@/lib/api/auth"
 import { createClient } from "@/lib/supabase/server"
+import { withClockSkewRetry } from "@/lib/supabase/retry"
 import {
   getMonthKey,
   summarizeByCategory,
@@ -46,15 +47,15 @@ export default async function DashboardPage({
   const userId = await requireUserId()
   const supabase = await createClient()
   const [profileResult, accountsResult, lockedHistoryResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("plan")
-      .eq("id", userId)
-      .maybeSingle(),
-    supabase.from("accounts").select("id, label").order("created_at", {
-      ascending: true,
-    }),
-    supabase.rpc("has_locked_history"),
+    withClockSkewRetry(() =>
+      supabase.from("profiles").select("plan").eq("id", userId).maybeSingle()
+    ),
+    withClockSkewRetry(() =>
+      supabase.from("accounts").select("id, label").order("created_at", {
+        ascending: true,
+      })
+    ),
+    withClockSkewRetry(() => supabase.rpc("has_locked_history")),
   ])
 
   if (
@@ -76,13 +77,15 @@ export default async function DashboardPage({
     return <EmptyDashboard />
   }
 
-  const transactionsResult = await supabase
-    .from("transactions")
-    .select(
-      "amount, category, transaction_date, uploaded_statements!inner(account_id)"
-    )
-    .eq("uploaded_statements.account_id", activeAccount.id)
-    .order("transaction_date", { ascending: true })
+  const transactionsResult = await withClockSkewRetry(() =>
+    supabase
+      .from("transactions")
+      .select(
+        "amount, category, transaction_date, uploaded_statements!inner(account_id)"
+      )
+      .eq("uploaded_statements.account_id", activeAccount.id)
+      .order("transaction_date", { ascending: true })
+  )
 
   if (transactionsResult.error) {
     throw new Error("거래 정보를 불러올 수 없습니다.")
