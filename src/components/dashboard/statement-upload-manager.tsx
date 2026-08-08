@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -210,14 +211,18 @@ export function StatementUploadManager({
   initialStatements,
   initialUploadOpen = false,
 }: StatementUploadManagerProps) {
+  const router = useRouter()
   const [accounts, setAccounts] = useState(initialAccounts)
   const [statements, setStatements] = useState(initialStatements)
   const [selectedAccountId, setSelectedAccountId] = useState(
     initialAccounts[0]?.id ?? ""
   )
   const [newAccountLabel, setNewAccountLabel] = useState("")
-  const [uploadOpen, setUploadOpen] = useState(initialUploadOpen)
+  const [uploadOpen, setUploadOpen] = useState(
+    initialUploadOpen && initialAccounts.length > 0
+  )
   const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const newAccountInputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [consent, setConsent] = useState(false)
   const [step, setStep] = useState<"select" | StatementStatus>("select")
@@ -232,6 +237,14 @@ export function StatementUploadManager({
     () => accounts.find((account) => account.id === selectedAccountId) ?? null,
     [accounts, selectedAccountId]
   )
+
+  useEffect(() => {
+    if (!initialUploadOpen) return
+    router.replace("/uploads")
+    if (initialAccounts.length === 0) {
+      newAccountInputRef.current?.focus()
+    }
+  }, [initialAccounts.length, initialUploadOpen, router])
 
   const pollingKey = useMemo(
     () =>
@@ -548,6 +561,7 @@ export function StatementUploadManager({
           </label>
           <Input
             id="new-account-label"
+            ref={newAccountInputRef}
             value={newAccountLabel}
             maxLength={80}
             className="h-11 px-4"

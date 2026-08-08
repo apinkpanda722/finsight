@@ -132,4 +132,57 @@ describe("LoginPage", () => {
       },
     })
   })
+
+  it("carries a safe returnTo through to the email verification callback link", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/login?view=signup&returnTo=%2Fsettings%2Fbilling"
+    )
+    authMocks.signUp.mockResolvedValue({ error: null })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.type(screen.getByLabelText("이메일"), "new@example.com")
+    await user.type(screen.getByLabelText("비밀번호"), "password123")
+    await user.type(screen.getByLabelText("비밀번호 확인"), "password123")
+    await user.click(screen.getByRole("button", { name: "가입하기" }))
+
+    await waitFor(() =>
+      expect(authMocks.signUp).toHaveBeenCalledWith({
+        email: "new@example.com",
+        password: "password123",
+        options: {
+          emailRedirectTo:
+            "http://localhost:3000/auth/callback?next=%2Fsettings%2Fbilling",
+        },
+      })
+    )
+  })
+
+  it("drops an unsafe returnTo instead of forwarding it to the callback link", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/login?view=signup&returnTo=%2F%2Fevil.com"
+    )
+    authMocks.signUp.mockResolvedValue({ error: null })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.type(screen.getByLabelText("이메일"), "new@example.com")
+    await user.type(screen.getByLabelText("비밀번호"), "password123")
+    await user.type(screen.getByLabelText("비밀번호 확인"), "password123")
+    await user.click(screen.getByRole("button", { name: "가입하기" }))
+
+    await waitFor(() =>
+      expect(authMocks.signUp).toHaveBeenCalledWith({
+        email: "new@example.com",
+        password: "password123",
+        options: {
+          emailRedirectTo: "http://localhost:3000/auth/callback",
+        },
+      })
+    )
+  })
 })
