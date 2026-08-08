@@ -83,5 +83,15 @@ describe("UploadsPage", () => {
     expect(pageMocks.from).toHaveBeenCalledWith("profiles")
     expect(pageMocks.from).toHaveBeenCalledWith("accounts")
     expect(pageMocks.from).toHaveBeenCalledWith("uploaded_statements")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("opens the upload dialog on arrival when ?upload=1 is present", async () => {
+    render(
+      await UploadsPage({ searchParams: Promise.resolve({ upload: "1" }) })
+    )
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("명세서 업로드")).toBeInTheDocument()
   })
 })

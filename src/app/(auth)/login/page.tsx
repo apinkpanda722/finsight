@@ -31,7 +31,9 @@ function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createClient(), [])
-  const [view, setView] = useState<AuthView>("login")
+  const [view, setView] = useState<AuthView>(
+    searchParams.get("view") === "signup" ? "signup" : "login"
+  )
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
@@ -119,6 +121,7 @@ function LoginContent() {
     return (
       <AuthShell>
         <Badge variant="secondary">이메일 인증 대기 중</Badge>
+        <p className="mt-2 text-xs text-muted-foreground">2단계 중 2번째</p>
         <h1 className="mt-4 text-[32px] leading-[1.13] tracking-[-0.4px]">
           메일함을 확인해주세요
         </h1>

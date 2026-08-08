@@ -1,8 +1,11 @@
-import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+
 import {
   CategoryBar,
   MonthlyLineTrend,
 } from "@/components/dashboard/dashboard-insights"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   summarizeByCategory,
   summarizeByMonth,
@@ -33,7 +36,7 @@ export const SAMPLE_TRANSACTIONS: InsightTransaction[] = [
   { amount: -45_000, category: "subscriptions", transaction_date: "2026-08-21" },
 ]
 
-const CARD_HOVER_CLASS =
+export const CARD_HOVER_CLASS =
   "transition-transform duration-200 ease-out hover:-translate-y-1 hover:scale-[1.02]"
 
 function formatWon(value: number): string {
@@ -99,6 +102,12 @@ export function SamplePreview() {
         >
           <MonthlyLineTrend monthly={monthly} title="월별 지출 추이" />
         </section>
+      </div>
+
+      <div className="mt-10 text-center">
+        <Button asChild className="h-12 px-6 text-base">
+          <Link href="/login?view=signup">내 명세서로 확인하기</Link>
+        </Button>
       </div>
     </section>
   )

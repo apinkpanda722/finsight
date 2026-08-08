@@ -47,6 +47,32 @@ beforeEach(() => {
 })
 
 describe("StatementUploadManager", () => {
+  it("stays closed by default", () => {
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={accounts}
+        initialStatements={[]}
+      />
+    )
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("opens the upload dialog on mount when initialUploadOpen is set", () => {
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={accounts}
+        initialStatements={[]}
+        initialUploadOpen
+      />
+    )
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("명세서 업로드")).toBeInTheDocument()
+  })
+
   it("shows account chips and routes locked Free accounts to the upgrade dialog", async () => {
     const user = userEvent.setup()
     render(

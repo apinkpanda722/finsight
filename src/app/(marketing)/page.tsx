@@ -1,6 +1,9 @@
 import Link from "next/link"
 
-import { SamplePreview } from "@/components/marketing/sample-preview"
+import {
+  CARD_HOVER_CLASS,
+  SamplePreview,
+} from "@/components/marketing/sample-preview"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -31,7 +34,7 @@ const plans = [
     features: ["계좌 1개", "최근 3개월 히스토리", "카테고리별 지출 요약"],
     featured: false,
     ctaLabel: "Free로 시작",
-    ctaHref: "/login",
+    ctaHref: "/login?view=signup",
   },
   {
     name: "Pro",
@@ -40,17 +43,14 @@ const plans = [
     features: ["다중 계좌", "계좌별 무제한 히스토리", "월별 지출 추이"],
     featured: true,
     ctaLabel: "Pro로 시작",
-    ctaHref: "/login?returnTo=/settings/billing",
+    ctaHref: "/login?view=signup&returnTo=/settings/billing",
   },
 ]
-
-const CARD_HOVER_CLASS =
-  "transition-transform duration-200 ease-out hover:-translate-y-1 hover:scale-[1.02]"
 
 function StartButton({ className = "" }: { className?: string }) {
   return (
     <Button asChild className={`h-12 px-6 text-base ${className}`}>
-      <Link href="/login">무료로 시작하기</Link>
+      <Link href="/login?view=signup">무료로 시작하기</Link>
     </Button>
   )
 }

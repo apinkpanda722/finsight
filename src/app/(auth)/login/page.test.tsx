@@ -45,6 +45,22 @@ describe("LoginPage", () => {
     ).toBeInTheDocument()
   })
 
+  it("opens directly on the signup view when linked with ?view=signup", () => {
+    window.history.replaceState({}, "", "/login?view=signup")
+
+    render(<LoginPage />)
+
+    expect(screen.getByRole("heading", { name: "회원가입" })).toBeInTheDocument()
+  })
+
+  it("defaults to the login view when no view is specified", () => {
+    window.history.replaceState({}, "", "/login")
+
+    render(<LoginPage />)
+
+    expect(screen.getByRole("heading", { name: "로그인" })).toBeInTheDocument()
+  })
+
   it("uses the safe return path after login", async () => {
     window.history.replaceState({}, "", "/login?returnTo=%2Fuploads")
     authMocks.signInWithPassword.mockResolvedValue({ error: null })
@@ -107,6 +123,7 @@ describe("LoginPage", () => {
     expect(
       await screen.findByRole("heading", { name: "메일함을 확인해주세요" })
     ).toBeInTheDocument()
+    expect(screen.getByText("2단계 중 2번째")).toBeInTheDocument()
     expect(authMocks.signUp).toHaveBeenCalledWith({
       email: "new@example.com",
       password: "password123",
