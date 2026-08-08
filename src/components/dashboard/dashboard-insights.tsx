@@ -60,19 +60,20 @@ function formatMonth(month: string): string {
   return `${Number(month.slice(5))}월`
 }
 
-function createTrendMonths(
-  monthly: MonthSummary[],
-  currentMonth: string,
-  plan: Plan
-): TrendMonth[] {
-  if (plan === "pro") {
-    return monthly.map((summary) => ({
-      ...summary,
-      current: summary.month === currentMonth,
-      locked: false,
-    }))
-  }
+function formatMonthTile(month: string): string {
+  return month.replace("-", ".")
+}
 
+const LINE_CHART_WIDTH = 560
+const LINE_CHART_HEIGHT = 160
+const LINE_CHART_PADDING_X = 24
+const LINE_CHART_PADDING_TOP = 20
+const LINE_CHART_PADDING_BOTTOM = 8
+
+function createLockedTrendMonths(
+  monthly: MonthSummary[],
+  currentMonth: string
+): TrendMonth[] {
   const totals = new Map(monthly.map((summary) => [summary.month, summary.total]))
 
   return Array.from({ length: 12 }, (_, index) => {
@@ -128,7 +129,7 @@ function AccountChips({
   )
 }
 
-function CategoryBar({
+export function CategoryBar({
   summary,
   maximum,
 }: {
@@ -157,23 +158,115 @@ function CategoryBar({
   )
 }
 
+export function MonthlyLineTrend({
+  monthly,
+  title,
+}: {
+  monthly: MonthSummary[]
+  title: string
+}) {
+  const maximum = Math.max(1, ...monthly.map((month) => month.total))
+  const stepX =
+    monthly.length > 1
+      ? (LINE_CHART_WIDTH - LINE_CHART_PADDING_X * 2) / (monthly.length - 1)
+      : 0
+  const points = monthly.map((month, index) => ({
+    ...month,
+    x: LINE_CHART_PADDING_X + stepX * index,
+    y:
+      LINE_CHART_PADDING_TOP +
+      (LINE_CHART_HEIGHT - LINE_CHART_PADDING_TOP - LINE_CHART_PADDING_BOTTOM) *
+        (1 - month.total / maximum),
+  }))
+  const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ")
+  const latest = monthly[monthly.length - 1]
+
+  return (
+    <div>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-heading text-lg font-semibold">{title}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            월별 지출 흐름을 비교합니다.
+          </p>
+        </div>
+        {latest ? (
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">최근 기간</p>
+            <p className="financial-number mt-1 text-lg font-medium">
+              {formatWon(latest.total)}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      <div role="img" aria-label="월별 지출 추이">
+        <svg
+          viewBox={`0 0 ${LINE_CHART_WIDTH} ${LINE_CHART_HEIGHT}`}
+          preserveAspectRatio="none"
+          className="h-[160px] w-full"
+        >
+          <polyline
+            points={linePoints}
+            fill="none"
+            stroke="var(--color-primary)"
+            strokeWidth={2}
+          />
+          {points.map((point) => (
+            <circle
+              key={point.month}
+              data-month-point
+              cx={point.x}
+              cy={point.y}
+              r={5}
+              fill="var(--color-primary)"
+            />
+          ))}
+        </svg>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        {monthly.map((month) => (
+          <div
+            key={month.month}
+            className="rounded-[var(--radius-md)] bg-[var(--color-surface-strong)] p-4"
+          >
+            <p className="financial-number text-xs text-muted-foreground">
+              {formatMonthTile(month.month)}
+            </p>
+            <p className="financial-number mt-1 text-base font-semibold">
+              {formatWon(month.total)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function MonthlyTrend({
   monthly,
   currentMonth,
   plan,
 }: Pick<DashboardInsightsProps, "monthly" | "currentMonth" | "plan">) {
-  const months = createTrendMonths(monthly, currentMonth, plan)
+  if (plan === "pro") {
+    return (
+      <section className="rounded-[var(--radius-xl)] border border-border bg-background p-6">
+        <MonthlyLineTrend monthly={monthly} title="월별 추이" />
+      </section>
+    )
+  }
+
+  const months = createLockedTrendMonths(monthly, currentMonth)
   const maximum = Math.max(0, ...months.map((month) => month.total))
 
   return (
     <section className="rounded-[var(--radius-xl)] border border-border bg-background p-6">
       <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <h2 className="font-heading text-lg font-semibold">월별 추이</h2>
-        {plan === "free" ? (
-          <p className="text-xs text-muted-foreground">
-            현재 달 포함 최근 3개월만 표시됩니다
-          </p>
-        ) : null}
+        <p className="text-xs text-muted-foreground">
+          현재 달 포함 최근 3개월만 표시됩니다
+        </p>
       </div>
 
       <div

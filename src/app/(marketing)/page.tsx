@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { SamplePreview } from "@/components/marketing/sample-preview"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,6 +30,8 @@ const plans = [
     description: "가볍게 지출 흐름을 확인할 때",
     features: ["계좌 1개", "최근 3개월 히스토리", "카테고리별 지출 요약"],
     featured: false,
+    ctaLabel: "Free로 시작",
+    ctaHref: "/login",
   },
   {
     name: "Pro",
@@ -36,8 +39,13 @@ const plans = [
     description: "여러 계좌를 오래 관리할 때",
     features: ["다중 계좌", "계좌별 무제한 히스토리", "월별 지출 추이"],
     featured: true,
+    ctaLabel: "Pro로 시작",
+    ctaHref: "/login?returnTo=/settings/billing",
   },
 ]
+
+const CARD_HOVER_CLASS =
+  "transition-transform duration-200 ease-out hover:-translate-y-1 hover:scale-[1.02]"
 
 function StartButton({ className = "" }: { className?: string }) {
   return (
@@ -101,7 +109,9 @@ export default function LandingPage() {
             aria-label="Finsight 지출 분석 미리보기"
             className="relative mx-auto h-[390px] w-full max-w-[500px] lg:h-[420px]"
           >
-            <Card className="absolute top-3 left-0 w-[280px] -rotate-3 border-white/10 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-2xl sm:w-[320px]">
+            <Card
+              className={`absolute top-3 left-0 w-[280px] -rotate-3 border-white/10 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-2xl sm:w-[320px] ${CARD_HOVER_CLASS}`}
+            >
               <CardContent className="p-6">
                 <p className="text-sm text-[var(--color-on-dark-soft)]">
                   이번 달 지출
@@ -115,7 +125,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="absolute right-0 bottom-4 w-[300px] rotate-3 border-white/10 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-2xl sm:w-[340px]">
+            <Card
+              className={`absolute right-0 bottom-4 w-[300px] rotate-3 border-white/10 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-2xl sm:w-[340px] ${CARD_HOVER_CLASS}`}
+            >
               <CardContent className="p-6">
                 <p className="mb-3 text-sm text-[var(--color-on-dark-soft)]">
                   카테고리 미리보기
@@ -148,7 +160,10 @@ export default function LandingPage() {
         </h2>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {features.map((feature) => (
-            <Card key={feature.title} className="border-border shadow-none">
+            <Card
+              key={feature.title}
+              className={`border-border shadow-none ${CARD_HOVER_CLASS}`}
+            >
               <CardContent className="p-6">
                 <span className="flex size-12 items-center justify-center rounded-full bg-[var(--color-surface-strong)] text-xs font-semibold text-foreground">
                   {feature.monogram}
@@ -162,6 +177,8 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      <SamplePreview />
 
       <section id="pricing" className="bg-[var(--color-surface-soft)]">
         <div className="mx-auto max-w-(--container-max) px-6 py-24 sm:px-8">
@@ -177,8 +194,8 @@ export default function LandingPage() {
                 key={plan.name}
                 className={
                   plan.featured
-                    ? "border-transparent bg-[var(--color-surface-dark)] text-[var(--color-on-dark)] shadow-none"
-                    : "border-border shadow-none"
+                    ? `border-transparent bg-[var(--color-surface-dark)] text-[var(--color-on-dark)] shadow-none ${CARD_HOVER_CLASS}`
+                    : `border-border shadow-none ${CARD_HOVER_CLASS}`
                 }
               >
                 <CardContent className="p-7">
@@ -208,19 +225,17 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ul>
+                  <Button
+                    asChild
+                    variant={plan.featured ? "default" : "outline"}
+                    className="mt-7 h-11 w-full"
+                  >
+                    <Link href={plan.ctaHref}>{plan.ctaLabel}</Link>
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="bg-[var(--color-surface-dark)] px-6 py-24 text-center text-[var(--color-on-dark)] sm:px-8">
-        <h2 className="mx-auto max-w-[760px] font-heading text-4xl leading-tight font-normal tracking-[-0.03em] sm:text-5xl">
-          첫 명세서에서 지출 흐름을 확인해보세요.
-        </h2>
-        <div className="mt-8">
-          <StartButton />
         </div>
       </section>
 

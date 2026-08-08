@@ -34,16 +34,25 @@ describe("DashboardInsights", () => {
     expect(screen.queryByText(/통합|합산/)).not.toBeInTheDocument()
   })
 
-  it("renders category amounts and a div-based monthly trend without a chart library", () => {
+  it("renders category amounts and a line-based monthly trend for pro accounts (no lock semantics apply)", () => {
     render(<DashboardInsights {...baseProps} />)
 
     expect(screen.getByText("식비")).toBeInTheDocument()
     expect(screen.getAllByText("30,000원")[0]).toHaveClass("financial-number")
-    expect(
-      screen.getByRole("img", { name: "월별 지출 추이" }).querySelectorAll(
-        "[data-month-bar]"
-      )
-    ).toHaveLength(2)
+    const chart = screen.getByRole("img", { name: "월별 지출 추이" })
+    expect(chart.querySelectorAll("[data-month-point]")).toHaveLength(2)
+    expect(chart.querySelector("polyline")).toBeInTheDocument()
+    expect(chart.querySelectorAll("[data-month-bar]")).toHaveLength(0)
+  })
+
+  it("shows a recent-period summary and one tile per month, wrapping instead of scrolling", () => {
+    const { container } = render(<DashboardInsights {...baseProps} />)
+
+    expect(screen.getByText("최근 기간")).toBeInTheDocument()
+    expect(screen.getByText("2026.07")).toBeInTheDocument()
+    expect(screen.getByText("2026.08")).toBeInTheDocument()
+    expect(screen.getByText("20,000원")).toBeInTheDocument()
+    expect(container.querySelector(".overflow-x-auto")).not.toBeInTheDocument()
   })
 
   it("shows the upgrade banner and locked month placeholders only from the RPC boolean", () => {
@@ -63,6 +72,9 @@ describe("DashboardInsights", () => {
       "/settings/billing"
     )
     expect(screen.getAllByLabelText(/잠김$/)).toHaveLength(9)
+    const chart = screen.getByRole("img", { name: "월별 지출 추이" })
+    expect(chart.querySelectorAll("[data-month-bar]").length).toBeGreaterThan(0)
+    expect(chart.querySelector("polyline")).not.toBeInTheDocument()
 
     rerender(
       <DashboardInsights
