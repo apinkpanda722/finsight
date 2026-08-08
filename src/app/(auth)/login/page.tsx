@@ -83,12 +83,18 @@ function LoginContent() {
       return
     }
 
+    const returnTo = searchParams.get("returnTo")
+    const callbackUrl = new URL(`${window.location.origin}/auth/callback`)
+    if (returnTo && isSafeReturnPath(returnTo)) {
+      callbackUrl.searchParams.set("next", returnTo)
+    }
+
     setIsSubmitting(true)
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl.toString(),
       },
     })
     setIsSubmitting(false)

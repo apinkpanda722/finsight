@@ -5,6 +5,7 @@ const pageMocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   from: vi.fn(),
   requireUserId: vi.fn(),
+  routerReplace: vi.fn(),
 }))
 
 vi.mock("@/lib/api/auth", () => ({
@@ -15,6 +16,9 @@ vi.mock("@/lib/supabase/server", () => ({
 }))
 vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(),
+}))
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: pageMocks.routerReplace }),
 }))
 
 import UploadsPage from "./page"

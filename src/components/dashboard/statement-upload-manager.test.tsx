@@ -5,10 +5,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const uiMocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   uploadToSignedUrl: vi.fn(),
+  routerReplace: vi.fn(),
 }))
 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: uiMocks.createClient,
+}))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: uiMocks.routerReplace }),
 }))
 
 import {
@@ -71,6 +76,45 @@ describe("StatementUploadManager", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument()
     expect(screen.getByText("명세서 업로드")).toBeInTheDocument()
+  })
+
+  it("does not auto-open the upload dialog for a zero-account user, and focuses the new account name input instead", () => {
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={[]}
+        initialStatements={[]}
+        initialUploadOpen
+      />
+    )
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("신규 계좌 이름")).toHaveFocus()
+  })
+
+  it("strips the one-shot upload=1 intent from the URL after mount", () => {
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={accounts}
+        initialStatements={[]}
+        initialUploadOpen
+      />
+    )
+
+    expect(uiMocks.routerReplace).toHaveBeenCalledWith("/uploads")
+  })
+
+  it("does not touch the URL when initialUploadOpen is not set", () => {
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={accounts}
+        initialStatements={[]}
+      />
+    )
+
+    expect(uiMocks.routerReplace).not.toHaveBeenCalled()
   })
 
   it("shows account chips and routes locked Free accounts to the upgrade dialog", async () => {
