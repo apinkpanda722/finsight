@@ -1,5 +1,5 @@
+import { BillingSubmitButton } from "@/components/dashboard/billing-submit-button"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { requireUserId } from "@/lib/api/auth"
 import { createClient } from "@/lib/supabase/server"
 import { withClockSkewRetry } from "@/lib/supabase/retry"
@@ -84,7 +84,7 @@ export default async function BillingSettingsPage() {
           </div>
         </section>
 
-        <div className="grid max-w-[760px] gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
           <section className="rounded-[var(--radius-xl)] border border-border bg-background p-8">
             <p className="text-sm font-medium text-muted-foreground">Free</p>
             <p className="financial-number mt-3 text-3xl font-semibold">무료</p>
@@ -114,21 +114,20 @@ export default async function BillingSettingsPage() {
               <li>PDF/엑셀 내보내기 (예정)</li>
             </ul>
             {plan === "pro" ? (
-              <form method="POST" action="/api/portal" className="mt-6">
-                <Button
-                  type="submit"
-                  variant="outline"
-                  className="h-11 border-white/30 bg-white text-[var(--color-ink)] hover:bg-white/90"
-                >
-                  구독 관리
-                </Button>
-              </form>
+              <BillingSubmitButton
+                action="/api/portal"
+                label="구독 관리"
+                pendingLabel="이동 중"
+                variant="outline"
+                className="h-11 border-white/30 bg-white text-[var(--color-ink)] hover:bg-white/90"
+              />
             ) : (
-              <form method="POST" action="/api/checkout" className="mt-6">
-                <Button type="submit" className="h-11 px-5">
-                  Pro로 업그레이드
-                </Button>
-              </form>
+              <BillingSubmitButton
+                action="/api/checkout"
+                label="Pro로 업그레이드"
+                pendingLabel="이동 중"
+                className="h-11 px-5"
+              />
             )}
           </section>
         </div>
