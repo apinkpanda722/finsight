@@ -45,7 +45,10 @@
     {
       "step": 5,
       "name": "statement-upload",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-07T20:32:17+0900",
+      "completed_at": "2026-08-07T20:51:50+0900",
+      "summary": "UTF-8/CP949 및 RFC 4180 CSV 검증, RPC 기반 signed upload 접수·재발급, 멱등 완료·Storage 우선 삭제 API와 계좌별 직접 업로드 UI를 구현했다."
     },
     {
       "step": 6,
