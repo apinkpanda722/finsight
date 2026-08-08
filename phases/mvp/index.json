@@ -69,7 +69,10 @@
     {
       "step": 8,
       "name": "integration-verification",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-07T22:12:37+0900",
+      "completed_at": "2026-08-07T22:21:32+0900",
+      "summary": "실제 Supabase에서 Free 계좌 생성 동시성·삭제 후 quota 보존·Polar stale 필터·Free 히스토리 RLS·composite FK를 검증하고, 5행 Anthropic 라이브 smoke(2회 호출, 입력 2,184·출력 207 tokens, 5.875초)를 통과했다."
     },
     {
       "step": 9,
