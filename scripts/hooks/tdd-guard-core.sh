@@ -44,7 +44,14 @@ check_path() {
     test_path="${file_path%.ts}.test.ts"
   fi
 
-  if [[ ! -f "$cwd/$test_path" ]]; then
+  local test_full_path
+  if [[ "$test_path" == /* ]]; then
+    test_full_path="$test_path"
+  else
+    test_full_path="$cwd/$test_path"
+  fi
+
+  if [[ ! -f "$test_full_path" ]]; then
     reasons+=("TDD 정책: $(basename -- "$file_path") 를 수정하기 전에 $(basename -- "$test_path") 테스트 파일을 먼저 작성하세요 (test-first).")
   fi
 }

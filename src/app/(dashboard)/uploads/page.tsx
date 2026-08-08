@@ -1,6 +1,7 @@
 import { StatementUploadManager } from "@/components/dashboard/statement-upload-manager"
 import { requireUserId } from "@/lib/api/auth"
 import { createClient } from "@/lib/supabase/server"
+import { withClockSkewRetry } from "@/lib/supabase/retry"
 import type { StatementStatus } from "@/types/domain"
 
 function statementStatus(value: string): StatementStatus {
@@ -22,23 +23,25 @@ export default async function UploadsPage() {
   const supabase = await createClient()
 
   const [profileResult, accountsResult, statementsResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("plan")
-      .eq("id", userId)
-      .maybeSingle(),
-    supabase
-      .from("accounts")
-      .select("id, label")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("uploaded_statements")
-      .select(
-        "id, account_id, file_name, status, row_count, error_message, processing_lease_expires_at, created_at, updated_at"
-      )
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false }),
+    withClockSkewRetry(() =>
+      supabase.from("profiles").select("plan").eq("id", userId).maybeSingle()
+    ),
+    withClockSkewRetry(() =>
+      supabase
+        .from("accounts")
+        .select("id, label")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+    ),
+    withClockSkewRetry(() =>
+      supabase
+        .from("uploaded_statements")
+        .select(
+          "id, account_id, file_name, status, row_count, error_message, processing_lease_expires_at, created_at, updated_at"
+        )
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+    ),
   ])
 
   if (profileResult.error || accountsResult.error || statementsResult.error) {
