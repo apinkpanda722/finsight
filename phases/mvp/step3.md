@@ -38,7 +38,7 @@ npm test
 
 1. 위 AC를 실행한다.
 2. plan 배지 컴포넌트에 대한 단위 테스트(예: plan='free'/'pro'에 따라 다른 텍스트 렌더링)가 구현보다 먼저 작성됐는지 확인한다.
-3. `npm run dev`로 로컬 실행 후 랜딩→로그인→(테스트 계정으로) 대시보드까지 수동으로 한 번 이동해본다.
+3. `.env`의 Supabase/Anthropic/Polar 키는 아직 실제 값이 아니라 자리표시자(mock, `...-REPLACE-BEFORE-REAL-USE`)다. 실제 회원가입/로그인 E2E(테스트 계정으로 랜딩→로그인→대시보드 이동)는 지금 시도하지 마라 — 실제 API 키가 없어 401로 실패하는 게 정상이며, 이를 이유로 `blocked` 처리하지 마라. 이 step은 AC(lint/build/test)와 코드 리뷰 수준으로만 검증하고, 실제 E2E 확인은 실제 키가 채워진 뒤 별도로 진행한다.
 4. 결과에 따라 `phases/mvp/index.json`의 step 3 항목을 업데이트한다.
 
 ## 금지사항
