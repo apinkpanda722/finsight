@@ -49,3 +49,8 @@ MVP 속도 최우선이되, 실제 플랫폼 제약(Vercel 요청 본문 한도,
 **결정**: GitHub↔Vercel 연결과 실제 배포는 별도 조기 단계로 두지 않고 마지막 step(`deploy-production-hardening`)에서 수행한다.
 **이유**: 초기 버전은 조기 배포로 플랫폼 특이 문제를 일찍 발견하는 것을 고려했으나, 가장 큰 Vercel 특이 리스크(Function 4.5MB 요청 본문 한도)는 이미 ADR-004로 설계 단계에서 해결했다. 나머지 구현(DB, 인증, 결제, 파싱)은 로컬 개발로 충분히 검증 가능하다.
 **트레이드오프**: ADR-004 이후 새로 발견되는 Vercel 특이 이슈가 있다면 조기 배포보다 늦게 발견된다. 발견되면 해당 시점에 대응한다.
+
+### ADR-010: 로그인에 Google OAuth를 이메일/비밀번호와 병행 추가
+**결정**: Supabase Auth의 Google provider를 활성화해 기존 이메일/비밀번호 인증과 나란히 제공한다. 별도 회원가입 페이지나 콜백 라우트를 새로 만들지 않는다 — 로그인 페이지에 `supabase.auth.signInWithOAuth({ provider: 'google' })` 버튼을 추가하고, 기존 `src/app/(auth)/auth/callback/route.ts`의 `exchangeCodeForSession`을 그대로 재사용한다(이 함수는 provider에 무관하게 동작).
+**이유**: Google 계정 사용자는 이메일 인증 단계 없이 즉시 온보딩할 수 있어 전환율이 높다. Supabase가 OAuth code exchange를 provider-agnostic하게 처리하므로 콜백 라우트 재사용이 가능해 구현 범위가 로그인 페이지 버튼 추가 + Supabase/Google 콘솔 설정으로 좁혀진다.
+**트레이드오프**: 같은 이메일이어도 이메일/비밀번호 계정과 Google 계정이 자동으로 병합되지 않는다(Supabase 기본 동작) — 사용자가 두 방식을 오가며 가입하면 별도 계정이 생길 수 있다. MVP는 이 계정 병합 케이스를 별도로 처리하지 않는다.

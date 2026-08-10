@@ -3,6 +3,10 @@
     {
       "dir": "mvp",
       "status": "pending"
+    },
+    {
+      "dir": "google-oauth-login",
+      "status": "pending"
     }
   ]
 }

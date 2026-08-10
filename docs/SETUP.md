@@ -66,7 +66,7 @@ supabase db push                                 # 위 3개 마이그레이션 �
 
 ### 2-3. `[수동]` Auth URL 설정 (이메일 인증 콜백)
 
-finsight는 **이메일 + 비밀번호** 인증만 쓴다(OAuth 없음). 가입 확인 메일과 비밀번호 재설정 메일 모두 `${origin}/auth/callback`으로 리다이렉트되므로, Supabase가 이 URL을 허용 목록에 갖고 있어야 한다.
+finsight는 **이메일 + 비밀번호**와 **Google OAuth**(ADR-010) 두 가지 인증 방식을 쓴다. 가입 확인 메일, 비밀번호 재설정 메일, Google OAuth 콜백 모두 `${origin}/auth/callback`으로 리다이렉트되므로, Supabase가 이 URL을 허용 목록에 갖고 있어야 한다.
 
 **Authentication → URL Configuration**:
 - `Site URL`: `http://localhost:3000` (배포 시 실제 도메인으로 갱신)
@@ -76,9 +76,18 @@ finsight는 **이메일 + 비밀번호** 인증만 쓴다(OAuth 없음). 가입 
   https://<your-domain>/**
   ```
 
-> 앱의 콜백 라우트는 `src/app/(auth)/auth/callback/route.ts` (`/auth/callback`)다. 회원가입 → 인증 메일 → 링크 클릭 → 이 콜백에서 code 교환 → `/dashboard`(또는 `?next=`로 지정된 경로, 비밀번호 재설정은 `/reset-password`).
+> 앱의 콜백 라우트는 `src/app/(auth)/auth/callback/route.ts` (`/auth/callback`)다. `exchangeCodeForSession`이 이메일 확인/비밀번호 재설정/Google OAuth code를 provider 구분 없이 동일하게 처리한다 → `/dashboard`(또는 `?next=`로 지정된 경로, 비밀번호 재설정은 `/reset-password`).
 
 > **로컬 개발 시 이메일 전송량 주의**: Supabase 기본 내장 SMTP는 시간당 발송량이 제한돼 있다(계정 확인/비밀번호 재설정 메일 다수 테스트 시 막힐 수 있음). 반복 테스트가 많다면 **Authentication → Providers → Email**에서 커스텀 SMTP를 연결하거나, 콘솔 **Authentication → Users**에서 테스트 유저를 수동으로 confirm 처리한다.
+
+### 2-4. `[수동]` Google OAuth Provider 설정
+
+1. Supabase 콘솔 **Authentication → Providers → Google**을 열어 `Enable` 토글을 켠다 — 이 페이지에 이 프로젝트 전용 **Callback URL**(`https://<project-ref>.supabase.co/auth/v1/callback`)이 표시된다.
+2. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type: `Web application`.
+3. **Authorized redirect URIs**에 1번에서 확인한 Supabase Callback URL을 그대로 붙여넣는다(앱 자체 URL이 아님).
+4. 발급된 **Client ID**/**Client secret**을 1번 Supabase Google Provider 설정 화면에 입력하고 저장한다.
+
+> 앱의 `.env`에는 Google Client ID/Secret을 별도로 넣지 않는다 — Supabase가 OAuth 흐름 전체(리다이렉트, code exchange, 세션 발급)를 대행하므로 클라이언트는 `supabase.auth.signInWithOAuth({ provider: 'google' })` 호출만 하면 된다.
 
 ## 3. Anthropic
 
