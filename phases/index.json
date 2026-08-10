@@ -11,7 +11,8 @@
     },
     {
       "dir": "remove-accounts",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-08-10T19:21:59+0900"
     }
   ]
 }

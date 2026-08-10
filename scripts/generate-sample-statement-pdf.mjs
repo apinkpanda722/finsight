@@ -73,7 +73,9 @@ async function main() {
 
   let y = 800
   page.drawText("2026년 8월 신한카드 이용대금 명세서", { x: 50, y, size: 14, font })
-  y -= 40
+  y -= 22
+  page.drawText("카드번호 1234-56**-****-7890", { x: 50, y, size: 10, font })
+  y -= 18
 
   for (const column of COLUMNS) {
     page.drawText(column.header, { x: column.x, y, size: 11, font })
