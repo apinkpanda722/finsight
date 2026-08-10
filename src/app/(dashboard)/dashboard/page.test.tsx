@@ -2,13 +2,11 @@ import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const pageMocks = vi.hoisted(() => ({
-  accountsOrder: vi.fn(),
   createClient: vi.fn(),
   from: vi.fn(),
   profileMaybeSingle: vi.fn(),
   requireUserId: vi.fn(),
   rpc: vi.fn(),
-  transactionEq: vi.fn(),
   transactionOrder: vi.fn(),
   transactionSelect: vi.fn(),
 }))
@@ -34,14 +32,11 @@ beforeEach(() => {
     data: { plan: "free" },
     error: null,
   })
-  pageMocks.accountsOrder.mockResolvedValue({
-    data: [{ id: "account-1", label: "신한카드" }],
-    error: null,
-  })
   pageMocks.transactionOrder.mockResolvedValue({ data: [], error: null })
   pageMocks.rpc.mockResolvedValue({ data: false, error: null })
-  pageMocks.transactionEq.mockReturnValue({ order: pageMocks.transactionOrder })
-  pageMocks.transactionSelect.mockReturnValue({ eq: pageMocks.transactionEq })
+  pageMocks.transactionSelect.mockReturnValue({
+    order: pageMocks.transactionOrder,
+  })
   pageMocks.from.mockImplementation((table: string) => {
     if (table === "profiles") {
       return {
@@ -50,12 +45,6 @@ beforeEach(() => {
             maybeSingle: pageMocks.profileMaybeSingle,
           }),
         }),
-      }
-    }
-
-    if (table === "accounts") {
-      return {
-        select: vi.fn().mockReturnValue({ order: pageMocks.accountsOrder }),
       }
     }
 
@@ -72,8 +61,8 @@ beforeEach(() => {
 })
 
 describe("DashboardPage", () => {
-  it("shows the first-upload empty state when the selected account has no visible completed transactions", async () => {
-    render(await DashboardPage({}))
+  it("shows the first-upload empty state when there are no visible transactions", async () => {
+    render(await DashboardPage())
 
     expect(
       screen.getByRole("heading", {
@@ -90,16 +79,9 @@ describe("DashboardPage", () => {
     expect(screen.queryByText(/mock/i)).not.toBeInTheDocument()
   })
 
-  it("queries and renders only the selected Pro account without a date filter or combined view", async () => {
+  it("queries and renders all visible Pro transactions as one unified view", async () => {
     pageMocks.profileMaybeSingle.mockResolvedValue({
       data: { plan: "pro" },
-      error: null,
-    })
-    pageMocks.accountsOrder.mockResolvedValue({
-      data: [
-        { id: "account-1", label: "신한카드" },
-        { id: "account-2", label: "국민은행" },
-      ],
       error: null,
     })
     pageMocks.transactionOrder.mockResolvedValue({
@@ -108,44 +90,42 @@ describe("DashboardPage", () => {
           amount: -42_000,
           category: "transport",
           transaction_date: "2026-08-03",
-          uploaded_statements: { account_id: "account-2" },
+        },
+        {
+          amount: -18_000,
+          category: "food_dining",
+          transaction_date: "2026-08-04",
         },
       ],
       error: null,
     })
 
-    render(
-      await DashboardPage({
-        searchParams: Promise.resolve({ account: "account-2" }),
-      })
-    )
+    render(await DashboardPage())
 
+    expect(screen.getByRole("heading", { name: "지출 인사이트" })).toBeInTheDocument()
     expect(screen.getByText("교통")).toBeInTheDocument()
+    expect(screen.getByText("식비")).toBeInTheDocument()
     expect(screen.getAllByText("42,000원").length).toBeGreaterThan(0)
     expect(pageMocks.transactionSelect).toHaveBeenCalledWith(
-      "amount, category, transaction_date, uploaded_statements!inner(account_id)"
+      "amount, category, transaction_date"
     )
-    expect(pageMocks.transactionEq).toHaveBeenCalledWith(
-      "uploaded_statements.account_id",
-      "account-2"
-    )
-    expect(screen.queryByText(/통합|합산/)).not.toBeInTheDocument()
+    expect(pageMocks.from).not.toHaveBeenCalledWith("accounts")
   })
 
   it("logs the underlying Postgrest error codes before failing", async () => {
-    pageMocks.accountsOrder.mockResolvedValue({
+    pageMocks.profileMaybeSingle.mockResolvedValue({
       data: null,
       error: { code: "PGRST301", message: "JWT expired" },
     })
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
-    await expect(DashboardPage({})).rejects.toThrow(
+    await expect(DashboardPage()).rejects.toThrow(
       "대시보드 정보를 불러올 수 없습니다."
     )
 
     expect(consoleError).toHaveBeenCalledWith(
       "dashboard query failed",
-      expect.objectContaining({ accountsErrorCode: "PGRST301" })
+      expect.objectContaining({ profileErrorCode: "PGRST301" })
     )
 
     consoleError.mockRestore()
@@ -167,13 +147,12 @@ describe("DashboardPage", () => {
             amount: -10_000,
             category: "groceries",
             transaction_date: "2026-08-03",
-            uploaded_statements: { account_id: "account-1" },
           },
         ],
         error: null,
       })
 
-      render(await DashboardPage({}))
+      render(await DashboardPage())
 
       expect(pageMocks.rpc).toHaveBeenCalledWith("has_locked_history")
       expect(Boolean(screen.queryByText(/3개월 이전 데이터도 있어요/))).toBe(
