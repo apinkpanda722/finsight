@@ -23,7 +23,7 @@
       "name": "upload-flow-simplification",
       "status": "completed",
       "started_at": "2026-08-10T19:03:09+0900",
-      "completed_at": "2026-08-10T19:11:00+0900",
+      "completed_at": "2026-08-10T19:12:36+0900",
       "summary": "업로드 초기화 계약과 UI에서 계좌 선택·생성 및 Pro 게이팅을 제거하고, 감지 라벨 노출과 일 10회 업로드 제한 동시성 검증을 반영했다."
     },
     {
