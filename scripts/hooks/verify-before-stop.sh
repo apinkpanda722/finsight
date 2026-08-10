@@ -6,6 +6,12 @@
 set -uo pipefail
 
 input=$(cat 2>/dev/null || true)
+stop_hook_active=$(jq -r '.stop_hook_active // false' <<< "$input" 2>/dev/null)
+
+# A blocking Stop hook asks the agent to continue and then runs Stop again.
+# Do not rerun the same verification during that continuation or it loops forever.
+[[ "$stop_hook_active" == "true" ]] && exit 0
+
 cwd=$(jq -r '.cwd // empty' <<< "$input" 2>/dev/null)
 [[ -z "$cwd" ]] && cwd="$(pwd)"
 
