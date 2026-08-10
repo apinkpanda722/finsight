@@ -15,7 +15,7 @@
       "name": "statement-label-detection",
       "status": "completed",
       "started_at": "2026-08-10T18:51:24+0900",
-      "completed_at": "2026-08-10T18:56:23+0900",
+      "completed_at": "2026-08-10T19:03:08+0900",
       "summary": "PDF 헤더 이전 preamble과 파일명을 기존 Claude 컬럼 매핑 호출에 함께 전달하고, 감지된 은행·카드사 라벨을 finalize_statement RPC로 저장하도록 구현했다."
     },
     {
