@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 
-import { CATEGORY_LABELS } from "@/components/dashboard/dashboard-insights"
 import { CARD_HOVER_CLASS, SAMPLE_TRANSACTIONS } from "@/components/marketing/sample-preview"
 import { Badge } from "@/components/ui/badge"
 import {
   summarizeByCategory,
   summarizeByMonth,
 } from "@/services/dashboardInsightService"
+import { CATEGORY_LABELS } from "@/types/domain"
 
 const RAW_CSV_ROWS = [
   { date: "2026-06-03", merchant: "이탈리안 레스토랑", amount: -180_000 },

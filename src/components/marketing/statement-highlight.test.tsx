@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest"
 
 import { SAMPLE_TRANSACTIONS } from "./sample-preview"
 import { StatementHighlight } from "./statement-highlight"
-import { CATEGORY_LABELS } from "@/components/dashboard/dashboard-insights"
 import {
   summarizeByCategory,
   summarizeByMonth,
 } from "@/services/dashboardInsightService"
+import { CATEGORY_LABELS } from "@/types/domain"
 
 function formatWon(value: number): string {
   return `${value.toLocaleString("ko-KR")}원`

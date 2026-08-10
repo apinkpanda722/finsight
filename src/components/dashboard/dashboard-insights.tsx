@@ -6,6 +6,7 @@ import type {
   CategorySummary,
   MonthSummary,
 } from "@/services/dashboardInsightService"
+import { CATEGORY_LABELS } from "@/types/domain"
 
 type DashboardInsightsProps = {
   categories: CategorySummary[]
@@ -18,24 +19,6 @@ type DashboardInsightsProps = {
 type TrendMonth = MonthSummary & {
   current: boolean
   locked: boolean
-}
-
-export const CATEGORY_LABELS: Record<string, string> = {
-  food_dining: "식비",
-  groceries: "장보기",
-  transport: "교통",
-  shopping: "쇼핑",
-  entertainment: "여가",
-  utilities: "공과금",
-  housing: "주거",
-  healthcare: "의료",
-  education: "교육",
-  travel: "여행",
-  subscriptions: "구독",
-  income: "수입",
-  transfer: "이체",
-  fees: "수수료",
-  other: "기타",
 }
 
 function shiftMonth(month: string, offset: number): string {
