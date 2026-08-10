@@ -178,11 +178,11 @@ describe("StatementUploadManager", () => {
       />
     )
 
-    await user.click(screen.getByRole("button", { name: "CSV 업로드" }))
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
     const file = new File(["date,amount\n2026-08-07,12000"], "statement.csv", {
       type: "text/csv",
     })
-    await user.upload(screen.getByLabelText("CSV 파일"), file)
+    await user.upload(screen.getByLabelText("CSV/PDF 파일"), file)
     await user.click(
       screen.getByRole("checkbox", {
         name: /Supabase Storage와 Anthropic/,
@@ -217,6 +217,87 @@ describe("StatementUploadManager", () => {
     )
   })
 
+  it("uploads a PDF statement with the application/pdf content type", async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            statementId: "statement-3",
+            accountId: "account-1",
+            storagePath: "user-id/statement-3",
+            uploadToken: "pdf-token",
+            status: "uploading",
+          }),
+          { status: 201, headers: { "content-type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ statementId: "statement-3", status: "pending" }),
+          { status: 202, headers: { "content-type": "application/json" } }
+        )
+      )
+
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={[accounts[0]]}
+        initialStatements={[]}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
+    const file = new File(["%PDF-1.7 fake"], "statement.pdf", {
+      type: "application/pdf",
+    })
+    await user.upload(screen.getByLabelText("CSV/PDF 파일"), file)
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Supabase Storage와 Anthropic/,
+      })
+    )
+    await user.click(screen.getByRole("button", { name: "업로드 시작" }))
+
+    await screen.findByText("처리 대기 중")
+    expect(uiMocks.uploadToSignedUrl).toHaveBeenCalledWith(
+      "user-id/statement-3",
+      "pdf-token",
+      file,
+      expect.objectContaining({ contentType: "application/pdf" })
+    )
+  })
+
+  it("rejects a file extension that is neither .csv nor .pdf", async () => {
+    // user-event filters uploads against the input's `accept` attribute by
+    // default, so this bypasses that to exercise the app's own extension check.
+    const user = userEvent.setup({ applyAccept: false })
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={[accounts[0]]}
+        initialStatements={[]}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
+    await user.upload(
+      screen.getByLabelText("CSV/PDF 파일"),
+      new File(["not a statement"], "statement.txt", { type: "text/plain" })
+    )
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Supabase Storage와 Anthropic/,
+      })
+    )
+    await user.click(screen.getByRole("button", { name: "업로드 시작" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "CSV 또는 PDF 파일만 업로드할 수 있습니다."
+    )
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it("shows rate-limit guidance from init-upload", async () => {
     const user = userEvent.setup()
     vi.mocked(fetch).mockResolvedValueOnce(
@@ -237,9 +318,9 @@ describe("StatementUploadManager", () => {
       />
     )
 
-    await user.click(screen.getByRole("button", { name: "CSV 업로드" }))
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
     await user.upload(
-      screen.getByLabelText("CSV 파일"),
+      screen.getByLabelText("CSV/PDF 파일"),
       new File(["date,amount\n2026-08-07,1"], "statement.csv", {
         type: "text/csv",
       })
@@ -275,9 +356,9 @@ describe("StatementUploadManager", () => {
 
     await user.click(screen.getByRole("button", { name: "신규 계좌" }))
     await user.type(screen.getByLabelText("신규 계좌 이름"), "신한카드")
-    await user.click(screen.getByRole("button", { name: "CSV 업로드" }))
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
     await user.upload(
-      screen.getByLabelText("CSV 파일"),
+      screen.getByLabelText("CSV/PDF 파일"),
       new File(["date,amount\n2026-08-07,1"], "statement.csv", {
         type: "text/csv",
       })

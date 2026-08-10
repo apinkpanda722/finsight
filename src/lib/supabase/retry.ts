@@ -1,7 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 
 const CLOCK_SKEW_ERROR_CODE = "PGRST303"
-const DEFAULT_RETRY_DELAY_MS = 400
+const DEFAULT_RETRY_DELAY_MS = 800
 
 /**
  * Supabase Auth와 PostgREST 사이의 미세한 clock skew로, 로그인 직후 발급된 JWT가

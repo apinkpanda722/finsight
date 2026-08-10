@@ -76,8 +76,8 @@ describe("DashboardPage", () => {
         name: "아직 업로드한 명세서가 없어요.",
       })
     ).toBeInTheDocument()
-    expect(screen.getByText("첫 CSV를 업로드해보세요")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "CSV 업로드하기" })).toHaveAttribute(
+    expect(screen.getByText("첫 CSV/PDF를 업로드해보세요")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "CSV/PDF 업로드하기" })).toHaveAttribute(
       "href",
       "/uploads?upload=1"
     )

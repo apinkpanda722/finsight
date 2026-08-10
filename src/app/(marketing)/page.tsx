@@ -4,6 +4,7 @@ import {
   CARD_HOVER_CLASS,
   SamplePreview,
 } from "@/components/marketing/sample-preview"
+import { StatementHighlight } from "@/components/marketing/statement-highlight"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -80,12 +81,20 @@ export default function LandingPage() {
 
         <div className="mx-auto grid max-w-(--container-max) gap-12 px-6 pt-16 pb-24 sm:px-8 lg:grid-cols-2 lg:items-center lg:pt-20">
           <div className="relative z-10">
-            <Badge
-              variant="secondary"
-              className="bg-white/10 text-[var(--color-on-dark)]"
-            >
-              개인 가계부
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="secondary"
+                className="bg-white/10 text-[var(--color-on-dark)]"
+              >
+                개인 가계부
+              </Badge>
+              <Badge
+                variant="secondary"
+                className="bg-white/10 text-[var(--color-on-dark)]"
+              >
+                AI 절약 인사이트
+              </Badge>
+            </div>
             <h1 className="mt-6 max-w-[680px] font-heading text-5xl leading-[1.04] font-normal tracking-[-0.045em] text-balance sm:text-6xl lg:text-[80px]">
               지출을 있는 그대로, 이해하기 쉽게.
             </h1>
@@ -110,7 +119,7 @@ export default function LandingPage() {
             className="relative mx-auto h-[390px] w-full max-w-[500px] lg:h-[420px]"
           >
             <Card
-              className={`absolute top-3 left-0 w-[280px] -rotate-3 border-white/10 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-2xl sm:w-[320px] ${CARD_HOVER_CLASS}`}
+              className={`absolute top-3 left-0 w-[280px] -rotate-3 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-[var(--shadow-glow-primary)] sm:w-[320px] ${CARD_HOVER_CLASS}`}
             >
               <CardContent className="p-6">
                 <p className="text-sm text-[var(--color-on-dark-soft)]">
@@ -126,7 +135,7 @@ export default function LandingPage() {
             </Card>
 
             <Card
-              className={`absolute right-0 bottom-4 w-[300px] rotate-3 border-white/10 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-2xl sm:w-[340px] ${CARD_HOVER_CLASS}`}
+              className={`absolute right-0 bottom-4 w-[300px] rotate-3 bg-[var(--color-surface-dark-elevated)] py-2 text-[var(--color-on-dark)] shadow-[var(--shadow-glow-primary)] sm:w-[340px] ${CARD_HOVER_CLASS}`}
             >
               <CardContent className="p-6">
                 <p className="mb-3 text-sm text-[var(--color-on-dark-soft)]">
@@ -180,6 +189,8 @@ export default function LandingPage() {
 
       <SamplePreview />
 
+      <StatementHighlight />
+
       <section id="pricing" className="bg-[var(--color-surface-soft)]">
         <div className="mx-auto max-w-(--container-max) px-6 py-24 sm:px-8">
           <div className="text-center">
@@ -194,7 +205,7 @@ export default function LandingPage() {
                 key={plan.name}
                 className={
                   plan.featured
-                    ? `border-transparent bg-[var(--color-surface-dark)] text-[var(--color-on-dark)] shadow-none ${CARD_HOVER_CLASS}`
+                    ? `border-transparent bg-[var(--color-surface-dark)] text-[var(--color-on-dark)] shadow-[var(--shadow-glow-primary)] ${CARD_HOVER_CLASS}`
                     : `border-border shadow-none ${CARD_HOVER_CLASS}`
                 }
               >

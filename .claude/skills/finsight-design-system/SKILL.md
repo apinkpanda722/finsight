@@ -33,6 +33,14 @@ finsight의 시각 디자인은 이미 Claude Design으로 확정됐고 이 스�
 - **빨강/초록(`--color-semantic-up/down`)은 거래 신호 텍스트 색상 전용**이지 버튼 배경으로 쓰지 않는다.
 - 톤은 차분하고 단정적("Markets, understood." 같은 예시). 느낌표·긴급성 문구("지금 바로", "놓치지 마세요") 금지.
 
+### 예외: 랜딩 페이지 "명세서 분석" 하이라이트 섹션
+
+랜딩 페이지의 `StatementHighlight` 컴포넌트(raw CSV vs 정리된 결과 비교, `src/components/marketing/statement-highlight.tsx`)에 한해서만 아래를 허용한다. 이 예외는 **랜딩 페이지 전용**이며 대시보드·인증 등 실제 제품 화면에는 적용하지 않는다.
+
+- 강조 카드 하나에만 `--shadow-glow-primary`(Deep Azure 링 + soft glow, `globals.css`) 사용 가능. 여전히 악센트는 Deep Azure 하나뿐이다 — 새 색을 추가하지 않는다.
+- 글로우 카드 안 큰 금액 텍스트는 대비 문제로 Deep Azure가 아니라 흰색(`--color-on-dark`)을 쓴다.
+- 이 섹션은 실제로 구현된 값(`summarizeByCategory`/`summarizeByMonth`)만 보여준다. "이상 거래", "구독 누수" 등 이 MVP에 없는 기능은 문구로도 언급하지 않는다 — 이를 지키는 가드 테스트가 `sample-preview.test.tsx`/`statement-highlight.test.tsx`에 있다.
+
 ## Tailwind / shadcn 매핑
 
 shadcn의 CSS 변수 컨벤션(`--primary`, `--radius`, `--background` 등)을 `references/tokens/*.css`의 값으로 덮어써서 `globals.css`(또는 shadcn theme 설정)에 반영한다. 하드코딩된 hex/px 값을 컴포넌트에 직접 쓰지 마라 — 항상 변수를 통해서 쓴다.
@@ -58,7 +66,7 @@ shadcn의 CSS 변수 컨벤션(`--primary`, `--radius`, `--background` 등)을 `
 
 | 실제 화면 (harness step) | prototype 참조 (`references/prototype/` 기준) |
 |---|---|
-| 랜딩 페이지 (`(marketing)/page.tsx`) | `auth-screens.jsx`의 `Landing()` — 다크 히어로 + floating ProductCard, 기능 3열 그리드, 요금제 2열, 하단 CTA, Footer |
+| 랜딩 페이지 (`(marketing)/page.tsx`) | `auth-screens.jsx`의 `Landing()` — 다크 히어로 + floating ProductCard, 기능 3열 그리드, 요금제 2열, 하단 CTA, Footer. 히어로 바로 아래 `StatementHighlight`(raw CSV vs 정리된 결과, 글로우 카드)는 prototype에 없는 랜딩 전용 신규 섹션 — 위 "예외" 항목 참고 |
 | 회원가입 (`/login` 가입 폼) | `auth-screens.jsx`의 `Signup()` |
 | 이메일 확인 대기 | `auth-screens.jsx`의 `VerifyEmail()` |
 | 로그인 (`/login`) | `auth-screens.jsx`의 `Login()` — `justVerified` 배너 패턴 포함 |

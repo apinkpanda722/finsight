@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { decodeCsvBuffer } from "@/lib/csv/decode"
 import { parseCsv } from "@/lib/csv/parse"
+import { isPdfBuffer, parsePdf } from "@/lib/pdf/parse"
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
@@ -711,10 +712,10 @@ export async function parseStatement(
       .download(lease.storagePath)
     if (downloadError || !fileData) throw new StatementParserError("unknown")
 
-    const { text } = decodeCsvBuffer(
-      Buffer.from(await fileData.arrayBuffer())
-    )
-    const { headers, rows } = parseCsv(text)
+    const buf = Buffer.from(await fileData.arrayBuffer())
+    const { headers, rows } = isPdfBuffer(buf)
+      ? await parsePdf(buf)
+      : parseCsv(decodeCsvBuffer(buf).text)
     if (rows.length !== lease.rowCount) {
       throw new StatementParserError("reconciliation_failed")
     }
