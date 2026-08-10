@@ -7,7 +7,8 @@
       "name": "google-login-button",
       "status": "completed",
       "started_at": "2026-08-10T11:32:25+0900",
-      "summary": "로그인·회원가입 뷰에 안전한 returnTo를 보존하는 공용 Google OAuth 버튼과 테스트를 추가함"
+      "summary": "로그인·회원가입 뷰에 안전한 returnTo를 보존하는 공용 Google OAuth 버튼과 테스트를 추가함",
+      "completed_at": "2026-08-10T11:36:58+0900"
     }
   ],
   "created_at": "2026-08-10T11:32:25+0900"
