@@ -106,6 +106,9 @@ describe("DashboardPage", () => {
     expect(screen.getByText("교통")).toBeInTheDocument()
     expect(screen.getByText("식비")).toBeInTheDocument()
     expect(screen.getAllByText("42,000원").length).toBeGreaterThan(0)
+    expect(
+      screen.getByRole("button", { name: "PDF 리포트 다운로드" })
+    ).toBeInTheDocument()
     expect(pageMocks.transactionSelect).toHaveBeenCalledWith(
       "amount, category, transaction_date"
     )

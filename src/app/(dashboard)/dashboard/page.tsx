@@ -1,5 +1,6 @@
 import { DashboardInsights } from "@/components/dashboard/dashboard-insights"
 import { EmptyDashboardCard } from "@/components/dashboard/empty-dashboard-card"
+import { ReportDownloadButton } from "@/components/dashboard/report-download-button"
 import { requireUserId } from "@/lib/api/auth"
 import { createClient } from "@/lib/supabase/server"
 import { withClockSkewRetry } from "@/lib/supabase/retry"
@@ -44,6 +45,8 @@ export default async function DashboardPage() {
     return <EmptyDashboardCard />
   }
 
+  const plan = profileResult.data?.plan === "pro" ? "pro" : "free"
+
   return (
     <main className="p-6 sm:p-10">
       <div className="mx-auto max-w-[var(--container-max)]">
@@ -57,11 +60,13 @@ export default async function DashboardPage() {
           </p>
         </header>
 
+        <ReportDownloadButton plan={plan} />
+
         <DashboardInsights
           categories={summarizeByCategory(transactions)}
           monthly={summarizeByMonth(transactions)}
           currentMonth={getMonthKey()}
-          plan={profileResult.data?.plan === "pro" ? "pro" : "free"}
+          plan={plan}
           hasLockedHistory={lockedHistoryResult.data === true}
         />
       </div>
