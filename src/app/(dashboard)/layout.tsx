@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import type { ReactNode } from "react"
 
 import { PlanBadge, type Plan } from "@/components/dashboard/plan-badge"
+import { PendingUploadProvider } from "@/components/dashboard/pending-upload-context"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
 import { withClockSkewRetry } from "@/lib/supabase/retry"
@@ -75,7 +76,9 @@ export default async function DashboardLayout({
         </form>
       </aside>
 
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="min-w-0 flex-1">
+        <PendingUploadProvider>{children}</PendingUploadProvider>
+      </div>
     </div>
   )
 }

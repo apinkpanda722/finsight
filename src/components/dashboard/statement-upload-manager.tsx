@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { usePendingUpload } from "@/components/dashboard/pending-upload-context"
 import { createClient } from "@/lib/supabase/client"
 import type {
   ApiErrorCode,
@@ -212,6 +213,7 @@ export function StatementUploadManager({
   initialUploadOpen = false,
 }: StatementUploadManagerProps) {
   const router = useRouter()
+  const { takePendingFile } = usePendingUpload()
   const [accounts, setAccounts] = useState(initialAccounts)
   const [statements, setStatements] = useState(initialStatements)
   const [selectedAccountId, setSelectedAccountId] = useState(
@@ -224,6 +226,7 @@ export function StatementUploadManager({
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const newAccountInputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const [consent, setConsent] = useState(false)
   const [step, setStep] = useState<"select" | StatementStatus>("select")
   const [progress, setProgress] = useState(0)
@@ -241,10 +244,12 @@ export function StatementUploadManager({
   useEffect(() => {
     if (!initialUploadOpen) return
     router.replace("/uploads")
+    const pendingFile = takePendingFile()
+    if (pendingFile) setFile(pendingFile)
     if (initialAccounts.length === 0) {
       newAccountInputRef.current?.focus()
     }
-  }, [initialAccounts.length, initialUploadOpen, router])
+  }, [initialAccounts.length, initialUploadOpen, router, takePendingFile])
 
   const pollingKey = useMemo(
     () =>
@@ -305,11 +310,17 @@ export function StatementUploadManager({
 
   function resetUpload() {
     setFile(null)
+    setIsDragging(false)
     setConsent(false)
     setStep("select")
     setProgress(0)
     setUploadError(null)
     setActiveStatementId(null)
+  }
+
+  function handleFileSelect(nextFile: File | null) {
+    setFile(nextFile)
+    setUploadError(null)
   }
 
   function changeUploadOpen(open: boolean) {
@@ -636,21 +647,41 @@ export function StatementUploadManager({
                 </DialogDescription>
               </DialogHeader>
 
-              <label className="mt-2 block cursor-pointer rounded-[var(--radius-md)] border border-dashed border-border px-4 py-7 text-center text-sm text-muted-foreground">
-                <span className={file ? "financial-number text-foreground" : ""}>
-                  {file ? file.name : "클릭해서 CSV/PDF 파일 선택"}
-                </span>
-                <input
-                  type="file"
-                  accept=".csv,.pdf,text/csv,application/pdf"
-                  className="sr-only"
-                  aria-label="CSV/PDF 파일"
-                  onChange={(event) => {
-                    setFile(event.target.files?.[0] ?? null)
-                    setUploadError(null)
-                  }}
-                />
-              </label>
+              <div
+                data-testid="statement-dropzone"
+                data-dragging={isDragging ? "true" : undefined}
+                className={`mt-2 rounded-[var(--radius-md)] border border-dashed px-4 py-7 text-center text-sm transition-colors ${
+                  isDragging
+                    ? "border-primary bg-[var(--color-surface-soft)] text-foreground"
+                    : "border-border text-muted-foreground"
+                }`}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setIsDragging(true)
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  setIsDragging(false)
+                  handleFileSelect(event.dataTransfer.files?.[0] ?? null)
+                }}
+              >
+                <label htmlFor="statement-file-input" className="block cursor-pointer">
+                  <span className={file ? "financial-number text-foreground" : ""}>
+                    {file ? file.name : "클릭하거나 파일을 끌어다 놓으세요 (CSV/PDF)"}
+                  </span>
+                  <input
+                    id="statement-file-input"
+                    type="file"
+                    accept=".csv,.pdf,text/csv,application/pdf"
+                    className="sr-only"
+                    aria-label="CSV/PDF 파일"
+                    onChange={(event) =>
+                      handleFileSelect(event.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+              </div>
 
               <label className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-[var(--color-body)]">
                 <input
