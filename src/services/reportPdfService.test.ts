@@ -49,12 +49,47 @@ describe("buildCategoryReportPdf", () => {
 
     expect(Buffer.isBuffer(pdf)).toBe(true)
     expect(text).toContain("Finsight 지출 리포트")
+    expect(text).toContain("카테고리별 지출")
+    expect(text).toContain("월별 추이")
     expect(text).toContain("식비")
     expect(text).toContain("교통")
     expect(text).toContain("custom_category")
     expect(text).toContain("1,234,567원")
     expect(text).toContain("987,654원")
     expect(text).not.toContain("�")
+  })
+
+  it("mirrors the dashboard summary cards (this-month total + change vs. previous month)", async () => {
+    const pdf = await buildCategoryReportPdf({
+      categories: [{ category: "food_dining", total: 1_250_000 }],
+      monthly: [
+        { month: "2026-07", total: 1_000_000 },
+        { month: "2026-08", total: 1_250_000 },
+      ],
+      currentMonth: "2026-08",
+      generatedAt: new Date("2026-08-10T11:30:00.000Z"),
+    })
+
+    const text = await extractText(pdf)
+
+    expect(text).toContain("이번 달 총 지출")
+    expect(text).toContain("1,250,000원")
+    expect(text).toContain("전월 대비")
+    expect(text).toContain("+25.0%")
+  })
+
+  it("shows an em dash for the change card when there is no previous month", async () => {
+    const pdf = await buildCategoryReportPdf({
+      categories: [],
+      monthly: [{ month: "2026-08", total: 500_000 }],
+      currentMonth: "2026-08",
+      generatedAt: new Date("2026-08-10T11:30:00.000Z"),
+    })
+
+    const text = await extractText(pdf)
+
+    expect(text).toContain("전월 대비")
+    expect(text).toContain("—")
   })
 
   it("returns a readable PDF when both summaries are empty", async () => {
@@ -65,7 +100,11 @@ describe("buildCategoryReportPdf", () => {
       generatedAt: new Date("2026-08-10T11:30:00.000Z"),
     })
 
-    await expect(extractText(pdf)).resolves.toContain("데이터 없음")
+    const text = await extractText(pdf)
+
+    expect(text).toContain("데이터 없음")
+    expect(text).toContain("이번 달 총 지출")
+    expect(text).toContain("0원")
     expect(Buffer.isBuffer(pdf)).toBe(true)
   })
 })
