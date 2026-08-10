@@ -9,17 +9,10 @@ import {
   StatementUploadError,
 } from "@/services/statementUploadService"
 
-const initUploadSchema = z
-  .object({
-    accountId: z.uuid().optional(),
-    newAccountLabel: z.string().trim().min(1).max(80).optional(),
-    fileName: z.string().trim().min(1).max(255),
-    declaredSizeBytes: z.number().int().min(1).max(5_242_880),
-  })
-  .refine(
-    (input) => Boolean(input.accountId) !== Boolean(input.newAccountLabel),
-    "Choose exactly one account"
-  )
+const initUploadSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  declaredSizeBytes: z.number().int().min(1).max(5_242_880),
+})
 
 export async function POST(request: NextRequest) {
   let userId: string

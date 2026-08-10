@@ -31,8 +31,6 @@ type StatementUploadDeps = {
 }
 
 export type InitStatementUploadInput = {
-  accountId?: string
-  newAccountLabel?: string
   fileName: string
   declaredSizeBytes: number
 }
@@ -73,17 +71,10 @@ function mapRpcError(error: unknown): StatementUploadError {
       429
     )
   }
-  if (text.includes("upgrade_required")) {
-    return new StatementUploadError(
-      "upgrade_required",
-      "계좌를 추가하려면 Pro 요금제가 필요합니다.",
-      403
-    )
-  }
-  if (text.includes("account_not_found") || text.includes("profile_not_found")) {
+  if (text.includes("profile_not_found")) {
     return new StatementUploadError(
       "not_found",
-      "계좌 또는 프로필을 찾을 수 없습니다.",
+      "프로필을 찾을 수 없습니다.",
       404
     )
   }
@@ -151,8 +142,6 @@ export async function initStatementUpload(
   try {
     rpcResult = await deps.supabase.rpc("create_statement_upload", {
       p_user_id: userId,
-      p_account_id: input.accountId ?? (null as never),
-      p_new_account_label: input.newAccountLabel ?? "",
       p_file_name: input.fileName,
       p_declared_size: input.declaredSizeBytes,
     })
@@ -171,7 +160,6 @@ export async function initStatementUpload(
 
   return {
     statementId: created.statement_id,
-    accountId: created.account_id,
     storagePath: created.storage_path,
     uploadToken,
     status: "uploading",
@@ -398,8 +386,8 @@ export async function getStatementStatus(
 
   return {
     statementId: statement.id,
-    accountId: statement.account_id,
     fileName: statement.file_name,
+    detectedLabel: statement.detected_label,
     status: toStatementStatus(statement.status),
     rowCount: statement.row_count,
     errorMessage: statement.error_message,

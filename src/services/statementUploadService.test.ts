@@ -11,7 +11,6 @@ import {
 import { buildTestPdf } from "@/test/pdf-fixture"
 
 const USER_ID = "8a1ca0d4-0a18-4fa5-b984-0a34eb1d6271"
-const ACCOUNT_ID = "02a4f23e-6ce5-4743-8858-9822cda92031"
 const STATEMENT_ID = "3a7487c0-6616-4cc6-8249-df06f8fd72da"
 const STORAGE_PATH = `${USER_ID}/${STATEMENT_ID}`
 
@@ -19,8 +18,8 @@ function statement(overrides: Record<string, unknown> = {}) {
   return {
     id: STATEMENT_ID,
     user_id: USER_ID,
-    account_id: ACCOUNT_ID,
     file_name: "statement.csv",
+    detected_label: null,
     declared_file_size_bytes: 100,
     file_size_bytes: null,
     row_count: null,
@@ -75,7 +74,6 @@ function makeSupabase(options: {
       data: [
         {
           statement_id: STATEMENT_ID,
-          account_id: ACCOUNT_ID,
           storage_path: STORAGE_PATH,
         },
       ],
@@ -126,7 +124,6 @@ describe("initStatementUpload", () => {
       initStatementUpload(
         USER_ID,
         {
-          accountId: ACCOUNT_ID,
           fileName: "original-name.csv",
           declaredSizeBytes: 100,
         },
@@ -134,7 +131,6 @@ describe("initStatementUpload", () => {
       )
     ).resolves.toEqual({
       statementId: STATEMENT_ID,
-      accountId: ACCOUNT_ID,
       storagePath: STORAGE_PATH,
       uploadToken: "upload-token",
       status: "uploading",
@@ -142,8 +138,6 @@ describe("initStatementUpload", () => {
 
     expect(db.rpc).toHaveBeenCalledWith("create_statement_upload", {
       p_user_id: USER_ID,
-      p_account_id: ACCOUNT_ID,
-      p_new_account_label: "",
       p_file_name: "original-name.csv",
       p_declared_size: 100,
     })
@@ -154,8 +148,6 @@ describe("initStatementUpload", () => {
 
   it.each([
     ["rate_limited", "rate_limited"],
-    ["upgrade_required", "upgrade_required"],
-    ["account_not_found", "not_found"],
     ["profile_not_found", "not_found"],
     ["database unavailable", "internal_error"],
   ] as const)("maps RPC error %s to %s", async (message, code) => {
@@ -167,7 +159,6 @@ describe("initStatementUpload", () => {
       initStatementUpload(
         USER_ID,
         {
-          accountId: ACCOUNT_ID,
           fileName: "statement.csv",
           declaredSizeBytes: 100,
         },
@@ -348,6 +339,7 @@ describe("statement reads and deletion", () => {
         {
           data: statement({
             status: "failed",
+            detected_label: "신한카드",
             error_message: "CSV 구조를 읽을 수 없습니다.",
           }),
           error: null,
@@ -362,6 +354,7 @@ describe("statement reads and deletion", () => {
     ).resolves.toMatchObject({
       statementId: STATEMENT_ID,
       status: "failed",
+      detectedLabel: "신한카드",
       retryable: true,
       errorMessage: "CSV 구조를 읽을 수 없습니다.",
     })

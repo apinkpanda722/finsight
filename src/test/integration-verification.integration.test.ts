@@ -38,7 +38,6 @@ type TestUser = {
 }
 
 type CreatedUpload = {
-  account_id: string
   statement_id: string
   storage_path: string
 }
@@ -61,14 +60,11 @@ async function createTestUser(label: string): Promise<TestUser> {
 
 async function createUpload(
   userId: string,
-  accountLabel: string,
   fileName = "integration.csv",
   declaredSize = 128
 ): Promise<CreatedUpload> {
   const { data, error } = await serviceRole.rpc("create_statement_upload", {
     p_user_id: userId,
-    p_account_id: null as never,
-    p_new_account_label: accountLabel,
     p_file_name: fileName,
     p_declared_size: declaredSize,
   })
@@ -144,38 +140,38 @@ afterEach(async () => {
 })
 
 describe.sequential("Supabase integration guarantees", () => {
-  it("serializes concurrent Free account creation", async () => {
-    const user = await createTestUser("concurrency")
-    const call = (label: string) =>
+  it("serializes concurrent uploads at the daily limit", async () => {
+    const user = await createTestUser("quota-concurrency")
+    const call = (index: number) =>
       serviceRole.rpc("create_statement_upload", {
         p_user_id: user.id,
-        p_account_id: null as never,
-        p_new_account_label: label,
-        p_file_name: `${label}.csv`,
+        p_file_name: `concurrent-${index}.csv`,
         p_declared_size: 128,
       })
 
-    const results = await Promise.all([call("Concurrent A"), call("Concurrent B")])
+    const results = await Promise.all(
+      Array.from({ length: 11 }, (_, index) => call(index))
+    )
     const succeeded = results.filter((result) => result.error === null)
     const failed = results.filter((result) => result.error !== null)
 
-    expect(succeeded).toHaveLength(1)
-    expect(succeeded[0].data).toHaveLength(1)
+    expect(succeeded).toHaveLength(10)
+    expect(succeeded.every((result) => result.data?.length === 1)).toBe(true)
     expect(failed).toHaveLength(1)
-    expect(failed[0].error?.message).toContain("upgrade_required")
+    expect(failed[0].error?.message).toContain("rate_limited")
 
     const { count, error } = await serviceRole
-      .from("accounts")
+      .from("upload_usage")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
 
     expect(error).toBeNull()
-    expect(count).toBe(1)
+    expect(count).toBe(10)
   })
 
   it("retains upload usage after deleting a statement", async () => {
     const user = await createTestUser("quota")
-    const upload = await createUpload(user.id, "Quota account")
+    const upload = await createUpload(user.id)
     await uploadCsv(upload.storage_path, "x")
 
     const before = await serviceRole
@@ -248,7 +244,6 @@ describe.sequential("Supabase integration guarantees", () => {
     ].join("\n")
     const upload = await createUpload(
       user.id,
-      "RLS account",
       "rls.csv",
       Buffer.byteLength(csv)
     )
@@ -311,22 +306,7 @@ describe.sequential("Supabase integration guarantees", () => {
   it("rejects cross-user composite foreign keys with service role", async () => {
     const owner = await createTestUser("fk-owner")
     const other = await createTestUser("fk-other")
-    const upload = await createUpload(owner.id, "Owner account")
-
-    const mismatchedStatement = await serviceRole
-      .from("uploaded_statements")
-      .insert({
-        user_id: other.id,
-        account_id: upload.account_id,
-        file_name: "cross-user.csv",
-        declared_file_size_bytes: 128,
-        storage_path: `${other.id}/${randomUUID()}`,
-      })
-
-    expect(mismatchedStatement.error?.code).toBe("23503")
-    expect(mismatchedStatement.error?.message).toContain(
-      "uploaded_statements_user_id_account_id_fkey"
-    )
+    const upload = await createUpload(owner.id)
 
     const mismatchedTransaction = await serviceRole.from("transactions").insert({
       user_id: other.id,
@@ -361,7 +341,6 @@ describe("live Anthropic smoke", () => {
       ].join("\n")
       const upload = await createUpload(
         user.id,
-        "Anthropic smoke",
         "anthropic-smoke.csv",
         Buffer.byteLength(csv)
       )

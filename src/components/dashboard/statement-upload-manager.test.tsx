@@ -28,15 +28,10 @@ import {
   type UploadStatement,
 } from "./statement-upload-manager"
 
-const accounts = [
-  { id: "account-1", label: "신한카드" },
-  { id: "account-2", label: "국민은행" },
-]
-
 const completedStatement: UploadStatement = {
   statementId: "statement-1",
-  accountId: "account-1",
   fileName: "신한카드_2026-08.csv",
+  detectedLabel: "신한카드",
   status: "completed",
   rowCount: 142,
   errorMessage: null,
@@ -62,8 +57,6 @@ describe("StatementUploadManager", () => {
   it("stays closed by default", () => {
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={accounts}
         initialStatements={[]}
       />
     )
@@ -74,8 +67,6 @@ describe("StatementUploadManager", () => {
   it("opens the upload dialog on mount when initialUploadOpen is set", () => {
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={accounts}
         initialStatements={[]}
         initialUploadOpen
       />
@@ -85,25 +76,9 @@ describe("StatementUploadManager", () => {
     expect(screen.getByText("명세서 업로드")).toBeInTheDocument()
   })
 
-  it("does not auto-open the upload dialog for a zero-account user, and focuses the new account name input instead", () => {
-    render(
-      <StatementUploadManager
-        plan="free"
-        initialAccounts={[]}
-        initialStatements={[]}
-        initialUploadOpen
-      />
-    )
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    expect(screen.getByLabelText("신규 계좌 이름")).toHaveFocus()
-  })
-
   it("strips the one-shot upload=1 intent from the URL after mount", () => {
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={accounts}
         initialStatements={[]}
         initialUploadOpen
       />
@@ -115,34 +90,11 @@ describe("StatementUploadManager", () => {
   it("does not touch the URL when initialUploadOpen is not set", () => {
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={accounts}
         initialStatements={[]}
       />
     )
 
     expect(uiMocks.routerReplace).not.toHaveBeenCalled()
-  })
-
-  it("shows account chips and routes locked Free accounts to the upgrade dialog", async () => {
-    const user = userEvent.setup()
-    render(
-      <StatementUploadManager
-        plan="free"
-        initialAccounts={accounts}
-        initialStatements={[]}
-      />
-    )
-
-    expect(screen.getByRole("button", { name: "신한카드" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    )
-    await user.click(screen.getByRole("button", { name: "국민은행 🔒" }))
-
-    const dialog = screen.getByRole("dialog")
-    expect(within(dialog).getByText("Pro 요금제가 필요합니다")).toBeInTheDocument()
-    expect(within(dialog).getByRole("button", { name: "Pro로 업그레이드" })).toBeInTheDocument()
   })
 
   it("uploads directly to Storage and reissues a token after a network failure", async () => {
@@ -153,7 +105,6 @@ describe("StatementUploadManager", () => {
         new Response(
           JSON.stringify({
             statementId: "statement-2",
-            accountId: "account-1",
             storagePath: "user-id/statement-2",
             uploadToken: "first-token",
             status: "uploading",
@@ -179,8 +130,6 @@ describe("StatementUploadManager", () => {
 
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={[accounts[0]]}
         initialStatements={[]}
       />
     )
@@ -213,6 +162,17 @@ describe("StatementUploadManager", () => {
       expect.objectContaining({ contentType: "text/csv" })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/statements/init-upload",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "statement.csv",
+          declaredSizeBytes: file.size,
+        }),
+      })
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "/api/statements/statement-2/upload-url",
       expect.objectContaining({ method: "POST" })
@@ -231,7 +191,6 @@ describe("StatementUploadManager", () => {
         new Response(
           JSON.stringify({
             statementId: "statement-3",
-            accountId: "account-1",
             storagePath: "user-id/statement-3",
             uploadToken: "pdf-token",
             status: "uploading",
@@ -248,8 +207,6 @@ describe("StatementUploadManager", () => {
 
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={[accounts[0]]}
         initialStatements={[]}
       />
     )
@@ -279,8 +236,6 @@ describe("StatementUploadManager", () => {
     const user = userEvent.setup()
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={[accounts[0]]}
         initialStatements={[]}
       />
     )
@@ -299,8 +254,6 @@ describe("StatementUploadManager", () => {
     const user = userEvent.setup()
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={[accounts[0]]}
         initialStatements={[]}
       />
     )
@@ -333,8 +286,6 @@ describe("StatementUploadManager", () => {
     const user = userEvent.setup({ applyAccept: false })
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={[accounts[0]]}
         initialStatements={[]}
       />
     )
@@ -371,8 +322,6 @@ describe("StatementUploadManager", () => {
 
     render(
       <StatementUploadManager
-        plan="free"
-        initialAccounts={[accounts[0]]}
         initialStatements={[]}
       />
     )
@@ -393,50 +342,11 @@ describe("StatementUploadManager", () => {
     expect(uiMocks.uploadToSignedUrl).not.toHaveBeenCalled()
   })
 
-  it("opens the upgrade dialog for an upgrade_required API response", async () => {
-    const user = userEvent.setup()
-    vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          error: "upgrade_required",
-          message: "계좌를 추가하려면 Pro 요금제가 필요합니다.",
-        }),
-        { status: 403, headers: { "content-type": "application/json" } }
-      )
-    )
-
-    render(
-      <StatementUploadManager
-        plan="free"
-        initialAccounts={[]}
-        initialStatements={[]}
-      />
-    )
-
-    await user.click(screen.getByRole("button", { name: "신규 계좌" }))
-    await user.type(screen.getByLabelText("신규 계좌 이름"), "신한카드")
-    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
-    await user.upload(
-      screen.getByLabelText("CSV/PDF 파일"),
-      new File(["date,amount\n2026-08-07,1"], "statement.csv", {
-        type: "text/csv",
-      })
-    )
-    await user.click(screen.getByRole("checkbox"))
-    await user.click(screen.getByRole("button", { name: "업로드 시작" }))
-
-    expect(
-      await screen.findByText("Pro 요금제가 필요합니다")
-    ).toBeInTheDocument()
-  })
-
   it("uses inline confirmation and removes a deleted statement row", async () => {
     const user = userEvent.setup()
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }))
     render(
       <StatementUploadManager
-        plan="pro"
-        initialAccounts={accounts}
         initialStatements={[completedStatement]}
       />
     )
@@ -464,8 +374,6 @@ describe("StatementUploadManager", () => {
     )
     render(
       <StatementUploadManager
-        plan="pro"
-        initialAccounts={accounts}
         initialStatements={[
           {
             ...completedStatement,
@@ -504,8 +412,6 @@ describe("StatementUploadManager", () => {
 
     render(
       <StatementUploadManager
-        plan="pro"
-        initialAccounts={accounts}
         initialStatements={[
           { ...completedStatement, status: "processing" },
         ]}
@@ -525,12 +431,11 @@ describe("StatementUploadManager", () => {
   it("renders untrusted statement text as plain content", () => {
     render(
       <StatementUploadManager
-        plan="pro"
-        initialAccounts={accounts}
         initialStatements={[
           {
             ...completedStatement,
             fileName: '<img src=x onerror="alert(1)">.csv',
+            detectedLabel: "<script>alert(1)</script>",
           },
         ]}
       />
@@ -539,6 +444,20 @@ describe("StatementUploadManager", () => {
     expect(
       screen.getByText('<img src=x onerror="alert(1)">.csv')
     ).toBeInTheDocument()
+    expect(screen.getByText("<script>alert(1)</script>")).toBeInTheDocument()
     expect(document.querySelector("img")).toBeNull()
+    expect(document.querySelector("script")).toBeNull()
+  })
+
+  it("shows the detected bank or card label beside the file name", () => {
+    render(
+      <StatementUploadManager initialStatements={[completedStatement]} />
+    )
+
+    const row = screen.getByTestId("statement-statement-1")
+    expect(within(row).getByText("신한카드")).toHaveAttribute(
+      "data-variant",
+      "secondary"
+    )
   })
 })
