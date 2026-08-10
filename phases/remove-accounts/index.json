@@ -1,0 +1,11 @@
+{
+  "project": "Finsight",
+  "phase": "remove-accounts",
+  "steps": [
+    { "step": 0, "name": "schema-migration", "status": "pending" },
+    { "step": 1, "name": "statement-label-detection", "status": "pending" },
+    { "step": 2, "name": "upload-flow-simplification", "status": "pending" },
+    { "step": 3, "name": "dashboard-unified-view", "status": "pending" },
+    { "step": 4, "name": "sample-statement-refresh", "status": "pending" }
+  ]
+}

@@ -26,9 +26,10 @@ MVP 속도 최우선이되, 실제 플랫폼 제약(Vercel 요청 본문 한도,
 **트레이드오프**: 업로드 플로우가 init-upload/직접 업로드/complete-upload 세 단계로 늘어나고, signed URL 재발급(네트워크 실패 대비) 경로가 추가로 필요하다.
 
 ### ADR-005: 사용자 소유 리소스는 composite FK로 cross-user 연결을 DB 레벨에서 차단
-**결정**: `accounts`/`uploaded_statements`에 `unique (user_id, id)`를 두고, 이를 참조하는 테이블은 `foreign key (user_id, parent_id) references parent(user_id, id)` 형태의 composite FK를 쓴다.
+**결정**: `uploaded_statements`에 `unique (user_id, id)`를 두고, 이를 참조하는 `transactions`는 `foreign key (user_id, statement_id) references uploaded_statements(user_id, id)` 형태의 composite FK를 쓴다.
 **이유**: RLS는 SELECT를 지키지만, service_role로 실행되는 서버 코드의 버그(예: statement_id는 맞는데 user_id를 잘못 채움)까지 막지는 못한다. composite FK는 그런 버그가 있어도 INSERT 자체를 거부한다.
 **트레이드오프**: 스키마가 약간 더 장황해진다. 이 정도 방어 심도는 금융 데이터를 다루는 앱에서 정당하다고 판단했다.
+> ADR-011로 `accounts` 테이블이 제거되면서, 이 패턴이 적용되는 관계는 `transactions → uploaded_statements` 하나만 남았다.
 
 ### ADR-006: 처리 실패는 5분 lease + 명시적 retry로 복구, 무한 자동 재시도는 하지 않는다
 **결정**: 백그라운드 처리는 `processing_lease_expires_at`을 기록한다. Claude 호출의 일시적 오류(429/5xx/네트워크)는 그 호출 안에서 지수 backoff로 최대 3회까지만 자동 재시도한다. lease가 만료되도록 처리 자체가 죽으면(`after()`가 durable queue가 아니므로 가능) 자동으로 다시 시도하지 않고, 사용자가 `POST /api/statements/{id}/retry`로 명시적으로 재개한다.
@@ -54,3 +55,13 @@ MVP 속도 최우선이되, 실제 플랫폼 제약(Vercel 요청 본문 한도,
 **결정**: Supabase Auth의 Google provider를 활성화해 기존 이메일/비밀번호 인증과 나란히 제공한다. 별도 회원가입 페이지나 콜백 라우트를 새로 만들지 않는다 — 로그인 페이지에 `supabase.auth.signInWithOAuth({ provider: 'google' })` 버튼을 추가하고, 기존 `src/app/(auth)/auth/callback/route.ts`의 `exchangeCodeForSession`을 그대로 재사용한다(이 함수는 provider에 무관하게 동작).
 **이유**: Google 계정 사용자는 이메일 인증 단계 없이 즉시 온보딩할 수 있어 전환율이 높다. Supabase가 OAuth code exchange를 provider-agnostic하게 처리하므로 콜백 라우트 재사용이 가능해 구현 범위가 로그인 페이지 버튼 추가 + Supabase/Google 콘솔 설정으로 좁혀진다.
 **트레이드오프**: 같은 이메일이어도 이메일/비밀번호 계정과 Google 계정이 자동으로 병합되지 않는다(Supabase 기본 동작) — 사용자가 두 방식을 오가며 가입하면 별도 계정이 생길 수 있다. MVP는 이 계정 병합 케이스를 별도로 처리하지 않는다.
+
+### ADR-011: `accounts`(계좌) 엔티티를 제거하고 명세서는 사용자에 직접 귀속
+**결정**: `accounts` 테이블과 계좌 선택/생성 UI(`AccountChips`, "신규 계좌 이름" 입력, 대시보드 계좌 전환)를 전부 제거한다. 명세서(`uploaded_statements`)와 거래(`transactions`)는 `user_id`로 사용자에 직접 귀속되고, 대시보드는 모든 명세서를 합친 단일 통합 뷰만 보여준다. 은행/카드명은 업로드된 파일에서 파싱한 표시용 텍스트 라벨(`uploaded_statements.detected_label`)로만 남기고, 별도 정규화 엔티티나 FK로 만들지 않는다. 라벨 추론은 새 Claude 호출을 추가하지 않고, 기존 컬럼 매핑 추론(ADR-003) 응답 스키마에 필드를 추가하는 방식으로 처리한다.
+**이유**: 업로드 필수 입력값이던 "계좌 선택 또는 신규 계좌 이름 입력"이 Radix Dialog의 모달 특성(배경 `pointer-events` 차단)과 충돌해, 팝업이 이미 열린 상태에서는 계좌가 없는 신규 사용자가 그 값을 채울 방법이 없는 실사용 버그로 이어졌다. 더 근본적으로, 이 입력을 사용자가 직접 타이핑하게 만드는 것 자체가 불필요한 마찰이었다 — 은행/카드명은 명세서 파일 자체에 이미 들어있는 정보라 파싱으로 대체 가능하다.
+**트레이드오프**: 여러 은행/카드의 거래가 자동으로 하나의 통합 뷰에 합쳐진다 — 원래 PRD가 fast-follow로 미뤄뒀던 "여러 계좌 합산 뷰"가 사실상 기본 동작이 된다. 계좌별로 지출을 나눠보고 싶은 사용자는 이 MVP에서 지원하지 않는다(라벨은 표시용일 뿐 필터링에 쓰이지 않음). Free/Pro 차별화 축에서 "계좌 개수 제한"이 빠지므로 요금제 모델도 함께 바뀐다(PRD 참고).
+
+### ADR-012: Pro 전용 PDF 분석 리포트 내보내기
+**결정**: Pro 사용자에게 카테고리별 지출 + 월별 추이를 담은 PDF 리포트 다운로드 기능을 제공한다. 생성은 `pdf-lib`(기존 `devDependencies`에서 `dependencies`로 승격, 샘플 명세서 PDF 생성 스크립트가 이미 이 라이브러리를 사용 중이었다)로 서버에서 수행하고, 리포트 내용은 기존 대시보드 집계 로직(`dashboardInsightService`의 `summarizeByCategory`/`summarizeByMonth`)을 그대로 재사용한다.
+**이유**: PRD에 이미 fast-follow 항목으로 있던 "PDF/엑셀 리포트 내보내기" 중 PDF만 먼저 구현하기로 했다(엑셀은 별도 라이브러리 도입이 필요해 범위를 나눔). 계좌 개수 제한이 빠지면서 사라진 Pro 차별화 요소를 대체한다. 리포트 집계 로직을 새로 만들지 않고 대시보드와 동일한 계산을 재사용해 두 화면의 숫자가 어긋날 위험을 없앤다.
+**트레이드오프**: 엑셀 내보내기, 계좌/카드별 리포트 분리 같은 세부 기능은 이번 범위에 없다(fast-follow). PDF 레이아웃이 단순한 텍스트/표 수준으로 시작하며, 시각적으로 정교한 리포트는 이후 개선 대상이다.
