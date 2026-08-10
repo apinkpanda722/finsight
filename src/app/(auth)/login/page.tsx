@@ -42,6 +42,16 @@ function LoginContent() {
   const [notice, setNotice] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  function buildCallbackUrl(): URL {
+    const returnTo = searchParams.get("returnTo")
+    const callbackUrl = new URL(`${window.location.origin}/auth/callback`)
+    if (returnTo && isSafeReturnPath(returnTo)) {
+      callbackUrl.searchParams.set("next", returnTo)
+    }
+
+    return callbackUrl
+  }
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError("")
@@ -83,11 +93,7 @@ function LoginContent() {
       return
     }
 
-    const returnTo = searchParams.get("returnTo")
-    const callbackUrl = new URL(`${window.location.origin}/auth/callback`)
-    if (returnTo && isSafeReturnPath(returnTo)) {
-      callbackUrl.searchParams.set("next", returnTo)
-    }
+    const callbackUrl = buildCallbackUrl()
 
     setIsSubmitting(true)
     const { error: signUpError } = await supabase.auth.signUp({
@@ -105,6 +111,22 @@ function LoginContent() {
     }
 
     setView("verify")
+  }
+
+  async function handleGoogleLogin(): Promise<void> {
+    setError("")
+    const callbackUrl = buildCallbackUrl()
+    const { error: googleLoginError } =
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callbackUrl.toString(),
+        },
+      })
+
+    if (googleLoginError) {
+      setError(googleLoginError.message)
+    }
   }
 
   async function handleResend() {
@@ -165,6 +187,14 @@ function LoginContent() {
         <p className="mt-2 mb-7 text-sm text-muted-foreground">
           이메일로 가입하고 첫 명세서를 업로드하세요.
         </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mb-4 h-12 w-full text-base"
+          onClick={handleGoogleLogin}
+        >
+          Google로 계속하기
+        </Button>
         <form className="space-y-4" noValidate onSubmit={handleSignup}>
           <FormField id="signup-email" label="이메일">
             <Input
@@ -232,6 +262,14 @@ function LoginContent() {
       <h1 className="mb-7 text-[32px] leading-[1.13] tracking-[-0.4px]">
         로그인
       </h1>
+      <Button
+        type="button"
+        variant="outline"
+        className="mb-4 h-12 w-full text-base"
+        onClick={handleGoogleLogin}
+      >
+        Google로 계속하기
+      </Button>
       <form className="space-y-4" noValidate onSubmit={handleLogin}>
         <FormField id="login-email" label="이메일">
           <Input
