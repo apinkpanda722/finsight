@@ -2,8 +2,23 @@
   "project": "Finsight",
   "phase": "pdf-report-export",
   "steps": [
-    { "step": 0, "name": "report-pdf-builder", "status": "pending" },
-    { "step": 1, "name": "report-access-service-and-route", "status": "pending" },
-    { "step": 2, "name": "report-download-ui", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "report-pdf-builder",
+      "status": "completed",
+      "summary": "buildCategoryReportPdf(input: ReportSummaryInput): Promise<Buffer> 구현 및 CATEGORY_LABELS를 src/types/domain.ts로 이동",
+      "started_at": "2026-08-10T20:08:04+0900"
+    },
+    {
+      "step": 1,
+      "name": "report-access-service-and-route",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "report-download-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-08-10T20:08:04+0900"
 }
