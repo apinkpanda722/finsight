@@ -2,10 +2,33 @@
   "project": "Finsight",
   "phase": "remove-accounts",
   "steps": [
-    { "step": 0, "name": "schema-migration", "status": "pending" },
-    { "step": 1, "name": "statement-label-detection", "status": "pending" },
-    { "step": 2, "name": "upload-flow-simplification", "status": "pending" },
-    { "step": 3, "name": "dashboard-unified-view", "status": "pending" },
-    { "step": 4, "name": "sample-statement-refresh", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "schema-migration",
+      "status": "error",
+      "started_at": "2026-08-10T18:31:19+0900",
+      "error_message": "새 Supabase 타입이 기존 accounts/account_id 및 구 RPC 호출부를 정확히 거부해 npm run build와 원격 통합 테스트가 실패하며, 해당 애플리케이션·테스트 수정은 Step 0 금지 범위임"
+    },
+    {
+      "step": 1,
+      "name": "statement-label-detection",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "upload-flow-simplification",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "dashboard-unified-view",
+      "status": "pending"
+    },
+    {
+      "step": 4,
+      "name": "sample-statement-refresh",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-08-10T18:31:19+0900"
 }
