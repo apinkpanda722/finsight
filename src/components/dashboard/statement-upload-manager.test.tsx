@@ -1,4 +1,11 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -266,6 +273,58 @@ describe("StatementUploadManager", () => {
       file,
       expect.objectContaining({ contentType: "application/pdf" })
     )
+  })
+
+  it("shows a drag-active state while a file is dragged over the dropzone, and clears it on drag leave", async () => {
+    const user = userEvent.setup()
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={[accounts[0]]}
+        initialStatements={[]}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
+    const dropzone = screen.getByTestId("statement-dropzone")
+
+    fireEvent.dragOver(dropzone)
+    expect(dropzone).toHaveAttribute("data-dragging", "true")
+
+    fireEvent.dragLeave(dropzone)
+    expect(dropzone).not.toHaveAttribute("data-dragging")
+  })
+
+  it("selects a file dropped onto the dropzone, same as picking one via the file input", async () => {
+    const user = userEvent.setup()
+    render(
+      <StatementUploadManager
+        plan="free"
+        initialAccounts={[accounts[0]]}
+        initialStatements={[]}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
+    const dropzone = screen.getByTestId("statement-dropzone")
+    const file = new File(["date,amount\n2026-08-07,12000"], "dropped.csv", {
+      type: "text/csv",
+    })
+
+    fireEvent.dragOver(dropzone)
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file] } })
+
+    expect(screen.getByText("dropped.csv")).toBeInTheDocument()
+    expect(dropzone).not.toHaveAttribute("data-dragging")
+
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Supabase Storage와 Anthropic/,
+      })
+    )
+    expect(
+      screen.getByRole("button", { name: "업로드 시작" })
+    ).not.toBeDisabled()
   })
 
   it("rejects a file extension that is neither .csv nor .pdf", async () => {
