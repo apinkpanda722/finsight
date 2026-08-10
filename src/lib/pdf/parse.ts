@@ -9,6 +9,7 @@ type TextContentItem = Awaited<
 type TextItem = Extract<TextContentItem, { str: string }>
 
 export type ParsedPdf = {
+  preambleLines: string[]
   headers: string[]
   rows: string[][]
 }
@@ -123,11 +124,14 @@ export async function parsePdf(buf: Buffer): Promise<ParsedPdf> {
   }
 
   const headerSegments = lineSegments[headerLineIndex]
+  const preambleLines = lineSegments
+    .slice(0, headerLineIndex)
+    .map((segments) => segments.map((segment) => segment.text).join(" "))
   const headers = headerSegments.map((segment) => segment.text)
   const columnXStarts = headerSegments.map((segment) => segment.xStart)
   const rows = lineSegments
     .slice(headerLineIndex + 1)
     .map((segments) => assignToColumns(segments, columnXStarts))
 
-  return { headers, rows }
+  return { preambleLines, headers, rows }
 }

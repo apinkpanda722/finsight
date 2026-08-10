@@ -28,6 +28,7 @@ describe("parsePdf", () => {
     ])
 
     await expect(parsePdf(buf)).resolves.toEqual({
+      preambleLines: [],
       headers: ["Date", "Description", "Amount"],
       rows: [
         ["2026-01-05", "Coffee", "4.50"],
@@ -44,8 +45,24 @@ describe("parsePdf", () => {
     ])
 
     await expect(parsePdf(buf)).resolves.toEqual({
+      preambleLines: ["Monthly Statement"],
       headers: ["Date", "Amount"],
       rows: [["2026-01-05", "4.50"]],
+    })
+  })
+
+  it("returns bank or card text that appears above the header", async () => {
+    const buf = await buildPdf([
+      [{ text: "Shinhan Card Statement", x: 50 }],
+      [{ text: "August 2026", x: 50 }],
+      [{ text: "Date", x: 50 }, { text: "Amount", x: 400 }],
+      [{ text: "2026-08-05", x: 50 }, { text: "4.50", x: 400 }],
+    ])
+
+    await expect(parsePdf(buf)).resolves.toEqual({
+      preambleLines: ["Shinhan Card Statement", "August 2026"],
+      headers: ["Date", "Amount"],
+      rows: [["2026-08-05", "4.50"]],
     })
   })
 
@@ -57,6 +74,7 @@ describe("parsePdf", () => {
     ])
 
     await expect(parsePdf(buf)).resolves.toEqual({
+      preambleLines: [],
       headers: ["Date", "Debit", "Credit"],
       rows: [
         ["2026-01-05", "10.00", ""],
@@ -77,6 +95,7 @@ describe("parsePdf", () => {
     ])
 
     await expect(parsePdf(buf)).resolves.toEqual({
+      preambleLines: [],
       headers: ["Date", "Description"],
       rows: [["2026-01-05", "Coffee Shop"]],
     })
@@ -86,6 +105,7 @@ describe("parsePdf", () => {
     const buf = await buildPdf([[{ text: "Date", x: 50 }, { text: "Amount", x: 400 }]])
 
     await expect(parsePdf(buf)).resolves.toEqual({
+      preambleLines: [],
       headers: ["Date", "Amount"],
       rows: [],
     })
