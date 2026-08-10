@@ -26,26 +26,33 @@
 
 ## Acceptance Criteria
 
+**중요**: 이 step 이후 `npm run build`/`npm test`는 전체적으로 실패한 상태로 남는 게 정상이다. `src/app/**`, `src/services/*.ts` 등 애플리케이션 코드는 여전히 옛 `accounts`/`account_id`/구 RPC 시그니처를 참조하고 있고, 그건 step 1~3이 고친다(전체 그린 빌드는 step 3 완료 후에나 성립한다). 이 AC는 그 사실을 알고 **스키마/RPC 변경 자체만** 좁게 검증한다 — 프로젝트 전체 빌드/테스트를 통과시키려고 금지사항에 적힌 애플리케이션 코드를 고치려 들지 마라.
+
 ```bash
-npm run build   # 컴파일 에러 없음 (src/types/supabase.ts 변경분 포함)
-npm test        # 테스트 통과 (이 step에서 마이그레이션 외 코드는 건드리지 않으므로 기존 테스트가 그대로 통과해야 한다)
+git status --short   # supabase/migrations/ 아래 새 파일 하나만 추가됐어야 한다 (src/types/supabase.ts 변경 포함)
 ```
 
-추가로: `mcp__supabase__execute_sql`로 `select * from public.accounts limit 1;`을 실행했을 때 "relation does not exist" 에러가 나는 것으로 테이블이 실제로 삭제됐음을 확인한다.
+아래는 `mcp__supabase__execute_sql`로 직접 실행해서 확인한다(코드로 작성할 필요 없음):
+- `select * from public.accounts limit 1;` → "relation does not exist" 에러가 나야 한다(테이블 삭제 확인)
+- `select column_name from information_schema.columns where table_name = 'uploaded_statements' and column_name in ('account_id', 'detected_label');` → `account_id`는 없고 `detected_label`만 나와야 한다
+- `select pg_get_function_identity_arguments(oid) from pg_proc where proname = 'create_statement_upload';` → 새 시그니처(`p_user_id uuid, p_file_name text, p_declared_size integer`)만 있어야 한다(옛 5-인자 버전이 남아있으면 안 된다 — `drop function`이 빠졌다는 뜻)
+- `select pg_get_function_identity_arguments(oid) from pg_proc where proname = 'finalize_statement';` → `p_detected_label`이 포함돼 있어야 한다
+
+`src/types/supabase.ts`가 실제로 재생성됐는지도 `grep -c '"accounts"' src/types/supabase.ts`(0이어야 함)와 `grep -c "detected_label" src/types/supabase.ts`(1 이상)로 확인한다.
 
 ## 검증 절차
 
-1. 위 AC 커맨드를 실행한다.
+1. 위 4가지 SQL 확인 + `git status --short`/grep 확인을 직접 실행한다. **`npm run build`나 `npm test`(특히 `integration-verification.integration.test.ts`)가 실패하는 것 자체는 이 step의 실패가 아니다** — 애플리케이션 코드가 아직 구 스키마를 참조 중이라 당연히 실패한다. 실패 로그를 보고 이 step의 범위(마이그레이션/RPC/타입) 밖의 파일을 고치려 들지 마라.
 2. 아키텍처 체크리스트를 확인한다:
    - ARCHITECTURE.md/ADR-011의 설계 의도(계좌 엔티티 완전 제거, 라벨은 표시용 텍스트일 뿐)를 벗어나지 않았는가?
    - CLAUDE.md CRITICAL 규칙 위반 없는가? (accounts/uploaded_statements/transactions 쓰기는 RPC를 통해서만 — 이번 step은 RPC 자체를 수정하는 것이므로 해당 규칙의 예외가 아니라 규칙을 구현하는 부분임에 유의)
 3. 결과에 따라 `phases/remove-accounts/index.json`의 step 0을 업데이트한다:
-   - 성공 → `"status": "completed"`, `"summary"`에 새 마이그레이션 파일명과 RPC 시그니처 변경 내용을 한 줄로 요약
-   - 수정 3회 시도 후에도 실패 → `"status": "error"`
+   - 위 4가지 SQL 확인이 전부 기대한 결과이고 `git status --short`가 마이그레이션 파일 + `src/types/supabase.ts` 외 아무것도 건드리지 않았다면 → `"status": "completed"`, `"summary"`에 새 마이그레이션 파일명과 RPC 시그니처 변경 내용을 한 줄로 요약(빌드/테스트가 깨진 상태로 넘어간다는 점도 summary에 남겨서 다음 step이 알 수 있게 한다)
+   - 마이그레이션/RPC 자체가 SQL 확인을 통과 못 하면(스키마 변경이 잘못 적용된 경우) → 3회 시도 후에도 실패 시 `"status": "error"`
    - Supabase 프로젝트 연결/권한 문제로 막히면 → `"status": "blocked"`
 
 ## 금지사항
 
 - `finalize_statement`의 reconciliation 검증 로직(row_index 완전성 검사)은 이번 step과 무관하니 건드리지 마라.
 - `has_locked_history()` RPC는 `accounts`를 참조하지 않으므로 수정하지 마라.
-- 이번 step에서 `src/services/*.ts`, `src/app/**`, `src/components/**`의 애플리케이션 코드는 수정하지 마라 — 다음 step들(1~3)이 새 RPC 시그니처에 맞춰 호출부를 고친다. 이번 step은 순수하게 스키마/RPC/타입 재생성만 다룬다. 테스트는 Supabase 클라이언트를 모킹하고 실제 RPC를 호출하지 않으므로, 서비스 레이어가 아직 구 RPC 시그니처를 호출하는 상태로 남아있어도 `npm test`는 그대로 통과해야 한다(런타임에만 깨지고, 이건 다음 step에서 고친다).
+- **`npm run build`나 `npm test`를 통과시키겠다고 `src/services/*.ts`, `src/app/**`, `src/components/**`의 애플리케이션 코드를 단 한 줄도 고치지 마라.** 이 step 직후엔 프로젝트 전체 빌드/테스트가 깨진 상태인 게 정상이고 의도된 것이다 — 다음 step들(1~3)이 새 RPC 시그니처에 맞춰 호출부를 고쳐서 빌드를 되살린다. 이번 step은 순수하게 마이그레이션 SQL 파일 + `src/types/supabase.ts` 재생성만 다룬다.

@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      accounts: {
-        Row: {
-          created_at: string
-          id: string
-          label: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          label: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          label?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           cancel_at_period_end: boolean
@@ -161,9 +140,9 @@ export type Database = {
       }
       uploaded_statements: {
         Row: {
-          account_id: string
           created_at: string
           declared_file_size_bytes: number
+          detected_label: string | null
           error_message: string | null
           failure_code: string | null
           file_name: string
@@ -182,9 +161,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          account_id: string
           created_at?: string
           declared_file_size_bytes: number
+          detected_label?: string | null
           error_message?: string | null
           failure_code?: string | null
           file_name: string
@@ -203,9 +182,9 @@ export type Database = {
           user_id: string
         }
         Update: {
-          account_id?: string
           created_at?: string
           declared_file_size_bytes?: number
+          detected_label?: string | null
           error_message?: string | null
           failure_code?: string | null
           file_name?: string
@@ -223,15 +202,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "uploaded_statements_user_id_account_id_fkey"
-            columns: ["user_id", "account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["user_id", "id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
@@ -240,20 +211,18 @@ export type Database = {
     Functions: {
       create_statement_upload: {
         Args: {
-          p_account_id: string
           p_declared_size: number
           p_file_name: string
-          p_new_account_label: string
           p_user_id: string
         }
         Returns: {
-          account_id: string
           statement_id: string
           storage_path: string
         }[]
       }
       finalize_statement: {
         Args: {
+          p_detected_label?: string
           p_statement_id: string
           p_transactions: Json
           p_user_id: string

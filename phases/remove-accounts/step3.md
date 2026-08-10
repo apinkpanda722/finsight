@@ -27,10 +27,14 @@
 
 ## Acceptance Criteria
 
+**이 step이 끝나면 `accounts`를 참조하는 애플리케이션 코드가 더 이상 하나도 없어야 한다** — step 0~2에서 의도적으로 미뤄뒀던 전체 그린 빌드가 여기서 처음으로 성립한다. 아래 두 커맨드가 모두 통과해야 완료로 볼 수 있다.
+
 ```bash
 npm run build
 npm test
 ```
+
+빌드가 여전히 실패한다면, `grep -rn "accounts\|account_id\|activeAccountId" src`로 이 step 또는 이전 step들이 놓친 참조가 없는지 확인하라(단, `accounts`가 문자열로 우연히 매칭되는 무관한 코드는 무시).
 
 ## 검증 절차
 

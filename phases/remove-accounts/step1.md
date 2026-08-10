@@ -24,8 +24,9 @@ Claude 호출을 새로 추가하지 않고, 기존 컬럼 매핑 추론 1회 �
 
 ## Acceptance Criteria
 
+**중요**: `npm run build`는 이 step 이후에도 실패한 상태가 정상이다(대시보드/업로드 UI 등 다른 파일들이 아직 옛 `accounts` 스키마를 참조 중이며, 그건 step 2~3이 고친다 — 전체 그린 빌드는 step 3 완료 후에 성립한다). `npm run build`를 통과시키려고 이 step 범위 밖의 파일을 고치지 마라. `npm test`는 vitest가 타입 체크 없이 트랜스파일만 하므로(`vitest.config.ts`에 typecheck 미설정) 이 step에서도 정상적으로 통과해야 한다.
+
 ```bash
-npm run build
 npm test
 ```
 
@@ -44,4 +45,6 @@ npm test
 - 은행/카드명 감지를 위한 새로운 Claude API 호출을 추가하지 마라. 이유: ADR-003이 Claude 호출 범위를 컬럼 매핑·카테고리 분류로 제한한 이유(비용, 프롬프트 인젝션 노출면)가 그대로 적용된다 — 기존 컬럼 매핑 호출의 출력 스키마만 넓혀라.
 - `applyColumnMapping`, `classifyCategories`, `assertReconciliation` 등 카테고리 분류/정합성 검증 로직은 이번 step과 무관하니 건드리지 마라.
 - 업로드 플로우(`statementUploadService.ts`, `init-upload` route, `statement-upload-manager.tsx`)는 이번 step 범위가 아니다 — step 2에서 다룬다.
+- 대시보드(`dashboard/page.tsx`, `dashboard-insights.tsx`)는 step 3 범위다 — 건드리지 마라.
+- **`npm run build`를 통과시키겠다고 이 step 범위 밖의 파일(대시보드, 업로드 UI 등)을 고치지 마라.** 전체 빌드가 깨진 상태로 다음 step에 넘어가는 게 이번 마이그레이션의 의도된 중간 상태다.
 - 기존 테스트를 깨뜨리지 마라.
