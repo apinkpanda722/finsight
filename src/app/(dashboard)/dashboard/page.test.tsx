@@ -126,6 +126,25 @@ describe("DashboardPage", () => {
     expect(screen.queryByText(/통합|합산/)).not.toBeInTheDocument()
   })
 
+  it("logs the underlying Postgrest error codes before failing", async () => {
+    pageMocks.accountsOrder.mockResolvedValue({
+      data: null,
+      error: { code: "PGRST301", message: "JWT expired" },
+    })
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(DashboardPage({})).rejects.toThrow(
+      "대시보드 정보를 불러올 수 없습니다."
+    )
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "dashboard query failed",
+      expect.objectContaining({ accountsErrorCode: "PGRST301" })
+    )
+
+    consoleError.mockRestore()
+  })
+
   it.each([
     [true, true],
     [false, false],

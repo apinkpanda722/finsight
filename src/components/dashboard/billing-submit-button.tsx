@@ -11,6 +11,7 @@ type BillingSubmitButtonProps = {
   pendingLabel: string
   variant?: "default" | "outline"
   className?: string
+  openInNewTab?: boolean
 }
 
 export function BillingSubmitButton({
@@ -19,15 +20,26 @@ export function BillingSubmitButton({
   pendingLabel,
   variant,
   className,
+  openInNewTab = false,
 }: BillingSubmitButtonProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  function handleSubmit() {
+    setIsSubmitting(true)
+    // target="_blank" 폼은 현재 페이지를 떠나지 않으므로, 언마운트 대신
+    // 새 탭이 열릴 시간만 준 뒤 버튼을 다시 눌러진 상태에서 풀어준다.
+    if (openInNewTab) {
+      setTimeout(() => setIsSubmitting(false), 1_000)
+    }
+  }
 
   return (
     <form
       method="POST"
       action={action}
+      target={openInNewTab ? "_blank" : undefined}
       className="mt-6"
-      onSubmit={() => setIsSubmitting(true)}
+      onSubmit={handleSubmit}
     >
       <Button
         type="submit"

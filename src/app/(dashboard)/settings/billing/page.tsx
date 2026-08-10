@@ -119,6 +119,7 @@ export default async function BillingSettingsPage() {
                 label="구독 관리"
                 pendingLabel="이동 중"
                 variant="outline"
+                openInNewTab
                 className="h-11 border-white/30 bg-white text-[var(--color-ink)] hover:bg-white/90"
               />
             ) : (
