@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { usePendingUpload } from "@/components/dashboard/pending-upload-context"
 import { createClient } from "@/lib/supabase/client"
 import type {
@@ -42,11 +41,6 @@ const STATUS_COLOR: Record<StatementStatus, string> = {
   failed: "var(--color-semantic-down)",
 }
 
-export type UploadAccount = {
-  id: string
-  label: string
-}
-
 export type UploadStatement = StatementStatusResponse
 
 type ApiErrorBody = {
@@ -55,8 +49,6 @@ type ApiErrorBody = {
 }
 
 type StatementUploadManagerProps = {
-  plan: "free" | "pro"
-  initialAccounts: UploadAccount[]
   initialStatements: UploadStatement[]
   initialUploadOpen?: boolean
 }
@@ -127,9 +119,19 @@ function StatementRow({
       className="flex flex-col gap-3 border-t border-border py-4 first:border-t-0 sm:flex-row sm:items-center sm:gap-4"
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-foreground">
-          {statement.fileName}
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-semibold text-foreground">
+            {statement.fileName}
+          </p>
+          {statement.detectedLabel ? (
+            <Badge
+              variant="secondary"
+              className="max-w-36 shrink-0 truncate text-muted-foreground"
+            >
+              {statement.detectedLabel}
+            </Badge>
+          ) : null}
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
           업로드 <span className="financial-number">{formatUploadedAt(statement.createdAt)}</span>
           {statement.rowCount == null ? (
@@ -207,24 +209,13 @@ function StatementRow({
 }
 
 export function StatementUploadManager({
-  plan,
-  initialAccounts,
   initialStatements,
   initialUploadOpen = false,
 }: StatementUploadManagerProps) {
   const router = useRouter()
   const { takePendingFile } = usePendingUpload()
-  const [accounts, setAccounts] = useState(initialAccounts)
   const [statements, setStatements] = useState(initialStatements)
-  const [selectedAccountId, setSelectedAccountId] = useState(
-    initialAccounts[0]?.id ?? ""
-  )
-  const [newAccountLabel, setNewAccountLabel] = useState("")
-  const [uploadOpen, setUploadOpen] = useState(
-    initialUploadOpen && initialAccounts.length > 0
-  )
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const newAccountInputRef = useRef<HTMLInputElement>(null)
+  const [uploadOpen, setUploadOpen] = useState(initialUploadOpen)
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [consent, setConsent] = useState(false)
@@ -236,20 +227,12 @@ export function StatementUploadManager({
   const pollCountsRef = useRef(new Map<string, number>())
   const pollingRequestsRef = useRef(new Set<string>())
 
-  const activeAccount = useMemo(
-    () => accounts.find((account) => account.id === selectedAccountId) ?? null,
-    [accounts, selectedAccountId]
-  )
-
   useEffect(() => {
     if (!initialUploadOpen) return
     router.replace("/uploads")
     const pendingFile = takePendingFile()
     if (pendingFile) setFile(pendingFile)
-    if (initialAccounts.length === 0) {
-      newAccountInputRef.current?.focus()
-    }
-  }, [initialAccounts.length, initialUploadOpen, router, takePendingFile])
+  }, [initialUploadOpen, router, takePendingFile])
 
   const pollingKey = useMemo(
     () =>
@@ -328,25 +311,6 @@ export function StatementUploadManager({
     if (!open) resetUpload()
   }
 
-  function chooseAccount(account: UploadAccount, index: number) {
-    if (plan === "free" && index > 0) {
-      setUpgradeOpen(true)
-      return
-    }
-
-    setSelectedAccountId(account.id)
-    setNewAccountLabel("")
-  }
-
-  function chooseNewAccount() {
-    if (plan === "free" && accounts.length > 0) {
-      setUpgradeOpen(true)
-      return
-    }
-
-    setSelectedAccountId("")
-  }
-
   async function uploadToStorage(
     statementId: string,
     storagePath: string,
@@ -397,11 +361,6 @@ export function StatementUploadManager({
       setUploadError("파일은 5MB 이하여야 합니다.")
       return
     }
-    if (!selectedAccountId && !newAccountLabel.trim()) {
-      setUploadError("계좌를 선택하거나 신규 계좌 이름을 입력해주세요.")
-      return
-    }
-
     setUploadError(null)
     setStep("uploading")
     setProgress(8)
@@ -411,9 +370,6 @@ export function StatementUploadManager({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          ...(selectedAccountId
-            ? { accountId: selectedAccountId }
-            : { newAccountLabel: newAccountLabel.trim() }),
           fileName: file.name,
           declaredSizeBytes: file.size,
         }),
@@ -421,15 +377,6 @@ export function StatementUploadManager({
 
       if (!initResponse.ok) {
         const apiFailure = await readJson<ApiErrorBody>(initResponse)
-        if (
-          initResponse.status === 403 &&
-          apiFailure.error === "upgrade_required"
-        ) {
-          setUploadOpen(false)
-          resetUpload()
-          setUpgradeOpen(true)
-          return
-        }
         if (initResponse.status === 429) {
           setStep("select")
           setUploadError(
@@ -468,8 +415,8 @@ export function StatementUploadManager({
       const now = new Date().toISOString()
       const nextStatement: UploadStatement = {
         statementId: initialized.statementId,
-        accountId: initialized.accountId,
         fileName: file.name,
+        detectedLabel: null,
         status: completed.status,
         rowCount: null,
         errorMessage: null,
@@ -478,13 +425,6 @@ export function StatementUploadManager({
         retryable: false,
       }
       setStatements((items) => [nextStatement, ...items])
-      if (!selectedAccountId) {
-        setAccounts((items) => [
-          ...items,
-          { id: initialized.accountId, label: newAccountLabel.trim() },
-        ])
-        setSelectedAccountId(initialized.accountId)
-      }
       setProgress(100)
       setStep(completed.status)
     } catch {
@@ -540,55 +480,6 @@ export function StatementUploadManager({
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap gap-2" aria-label="계좌 선택">
-        {accounts.map((account, index) => {
-          const locked = plan === "free" && index > 0
-          const active = selectedAccountId === account.id
-          return (
-            <button
-              key={account.id}
-              type="button"
-              aria-pressed={active}
-              className={`rounded-full px-4 py-2 text-sm transition-colors ${
-                active
-                  ? "bg-[var(--color-ink)] text-[var(--color-on-dark)]"
-                  : "bg-[var(--color-surface-strong)] text-foreground"
-              } ${locked ? "opacity-55" : ""}`}
-              onClick={() => chooseAccount(account, index)}
-            >
-              {account.label}
-              {locked ? " 🔒" : ""}
-            </button>
-          )
-        })}
-        <button
-          type="button"
-          aria-pressed={selectedAccountId === ""}
-          className="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground"
-          onClick={chooseNewAccount}
-        >
-          신규 계좌
-          {plan === "free" && accounts.length > 0 ? " 🔒" : ""}
-        </button>
-      </div>
-
-      {selectedAccountId === "" ? (
-        <div className="mb-6 max-w-sm">
-          <label htmlFor="new-account-label" className="mb-2 block text-sm font-medium">
-            신규 계좌 이름
-          </label>
-          <Input
-            id="new-account-label"
-            ref={newAccountInputRef}
-            value={newAccountLabel}
-            maxLength={80}
-            className="h-11 px-4"
-            placeholder="예: 신한카드"
-            onChange={(event) => setNewAccountLabel(event.target.value)}
-          />
-        </div>
-      ) : null}
-
       {pageError ? (
         <p
           role="alert"
@@ -602,7 +493,7 @@ export function StatementUploadManager({
         <div>
           <h2 className="font-heading text-xl font-semibold">업로드한 명세서</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {(activeAccount?.label ?? newAccountLabel.trim()) || "신규 계좌"}의 CSV/PDF 원본과 처리 상태입니다.
+            CSV/PDF 원본과 처리 상태를 확인할 수 있습니다.
           </p>
         </div>
         <Button type="button" className="h-11 px-5" onClick={() => setUploadOpen(true)}>
@@ -800,34 +691,6 @@ export function StatementUploadManager({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="w-[calc(100%-2rem)] max-w-[420px] rounded-[var(--radius-xl)] border-border p-8"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-xl">Pro 요금제가 필요합니다</DialogTitle>
-            <DialogDescription>
-              Free 요금제는 계좌 한 개를 지원합니다. Pro에서는 계좌를 제한 없이 추가할 수 있습니다.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 flex-1"
-              onClick={() => setUpgradeOpen(false)}
-            >
-              닫기
-            </Button>
-            <form method="POST" action="/api/checkout" className="flex-1">
-              <Button type="submit" className="h-11 w-full">
-                Pro로 업그레이드
-              </Button>
-            </form>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

@@ -3,7 +3,6 @@ export type ApiErrorCode =
   | "forbidden"
   | "validation_error"
   | "rate_limited"
-  | "upgrade_required"
   | "not_found"
   | "conflict"
   | "internal_error"
@@ -37,7 +36,6 @@ export type StatementStatus =
 
 export type InitStatementUploadResponse = {
   statementId: string
-  accountId: string
   storagePath: string
   uploadToken: string
   status: "uploading"
@@ -50,8 +48,8 @@ export type CompleteUploadResponse = {
 
 export type StatementStatusResponse = {
   statementId: string
-  accountId: string
   fileName: string
+  detectedLabel: string | null
   status: StatementStatus
   rowCount: number | null
   errorMessage: string | null

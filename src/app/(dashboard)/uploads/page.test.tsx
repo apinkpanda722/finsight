@@ -6,6 +6,7 @@ const pageMocks = vi.hoisted(() => ({
   from: vi.fn(),
   requireUserId: vi.fn(),
   routerReplace: vi.fn(),
+  select: vi.fn(),
 }))
 
 vi.mock("@/lib/api/auth", () => ({
@@ -27,66 +28,49 @@ beforeEach(() => {
   vi.clearAllMocks()
   pageMocks.requireUserId.mockResolvedValue("user-id")
   pageMocks.createClient.mockResolvedValue({ from: pageMocks.from })
-  pageMocks.from.mockImplementation((table: string) => {
-    if (table === "profiles") {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: { plan: "free" },
-              error: null,
-            }),
-          }),
-        }),
-      }
-    }
-    if (table === "accounts") {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: [{ id: "account-1", label: "신한카드" }],
-              error: null,
-            }),
-          }),
-        }),
-      }
-    }
-    return {
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({
-            data: [
-              {
-                id: "statement-1",
-                account_id: "account-1",
-                file_name: "statement.csv",
-                status: "completed",
-                row_count: 12,
-                error_message: null,
-                processing_lease_expires_at: null,
-                created_at: "2026-08-07T10:00:00.000Z",
-                updated_at: "2026-08-07T10:00:00.000Z",
-              },
-            ],
-            error: null,
-          }),
-        }),
+  pageMocks.from.mockReturnValue({ select: pageMocks.select })
+  pageMocks.select.mockReturnValue({
+    eq: vi.fn().mockReturnValue({
+      order: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: "statement-id",
+            detected_label: "신한카드",
+            file_name: "statement.csv",
+            status: "completed",
+            row_count: 12,
+            error_message: null,
+            processing_lease_expires_at: null,
+            created_at: "2026-08-10T00:00:00.000Z",
+            updated_at: "2026-08-10T00:01:00.000Z",
+          },
+        ],
+        error: null,
       }),
-    }
+    }),
   })
 })
 
 describe("UploadsPage", () => {
-  it("loads the authenticated user's plan, accounts, and statement list", async () => {
+  it("loads user-owned statements with their detected labels and no account data", async () => {
     render(await UploadsPage())
 
     expect(screen.getByRole("heading", { name: "명세서 관리" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "신한카드" })).toBeInTheDocument()
     expect(screen.getByText("statement.csv")).toBeInTheDocument()
-    expect(pageMocks.from).toHaveBeenCalledWith("profiles")
-    expect(pageMocks.from).toHaveBeenCalledWith("accounts")
+    expect(screen.getByText("신한카드")).toHaveAttribute(
+      "data-variant",
+      "secondary"
+    )
+    expect(pageMocks.from).toHaveBeenCalledOnce()
     expect(pageMocks.from).toHaveBeenCalledWith("uploaded_statements")
+    expect(pageMocks.from).not.toHaveBeenCalledWith("profiles")
+    expect(pageMocks.from).not.toHaveBeenCalledWith("accounts")
+    expect(pageMocks.select).toHaveBeenCalledWith(
+      expect.stringContaining("detected_label")
+    )
+    expect(pageMocks.select).not.toHaveBeenCalledWith(
+      expect.stringContaining("account_id")
+    )
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 

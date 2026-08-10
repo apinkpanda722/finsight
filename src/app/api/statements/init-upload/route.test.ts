@@ -27,7 +27,6 @@ vi.mock("@/services/statementUploadService", () => ({
   },
 }))
 
-import { StatementUploadError } from "@/services/statementUploadService"
 import { POST } from "./route"
 
 beforeEach(() => {
@@ -36,7 +35,6 @@ beforeEach(() => {
   routeMocks.createServiceRoleClient.mockReturnValue({ serviceRole: true })
   routeMocks.initStatementUpload.mockResolvedValue({
     statementId: "statement-id",
-    accountId: "02a4f23e-6ce5-4743-8858-9822cda92031",
     storagePath: "user-id/statement-id",
     uploadToken: "token",
     status: "uploading",
@@ -49,7 +47,6 @@ describe("POST /api/statements/init-upload", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        accountId: "02a4f23e-6ce5-4743-8858-9822cda92031",
         fileName: "statement.csv",
         declaredSizeBytes: 1024,
       }),
@@ -61,7 +58,6 @@ describe("POST /api/statements/init-upload", () => {
     expect(routeMocks.initStatementUpload).toHaveBeenCalledWith(
       "user-id",
       {
-        accountId: "02a4f23e-6ce5-4743-8858-9822cda92031",
         fileName: "statement.csv",
         declaredSizeBytes: 1024,
       },
@@ -69,40 +65,16 @@ describe("POST /api/statements/init-upload", () => {
     )
   })
 
-  it("rejects metadata that selects neither an existing nor a new account", async () => {
+  it("rejects incomplete file metadata", async () => {
     const request = new NextRequest("https://finsight.test/api/statements/init-upload", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ fileName: "statement.csv", declaredSizeBytes: 100 }),
+      body: JSON.stringify({ fileName: "statement.csv" }),
     })
 
     const response = await POST(request)
 
     expect(response.status).toBe(400)
     expect(routeMocks.initStatementUpload).not.toHaveBeenCalled()
-  })
-
-  it("returns the upgrade status selected by the service", async () => {
-    routeMocks.initStatementUpload.mockRejectedValueOnce(
-      new StatementUploadError(
-        "upgrade_required" as never,
-        "계좌를 추가하려면 Pro 요금제가 필요합니다.",
-        403
-      )
-    )
-    const request = new NextRequest("https://finsight.test/api/statements/init-upload", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        newAccountLabel: "새 계좌",
-        fileName: "statement.csv",
-        declaredSizeBytes: 100,
-      }),
-    })
-
-    const response = await POST(request)
-
-    expect(response.status).toBe(403)
-    expect((await response.json()).error).toBe("upgrade_required")
   })
 })

@@ -30,36 +30,22 @@ export default async function UploadsPage({
   const userId = await requireUserId()
   const supabase = await createClient()
 
-  const [profileResult, accountsResult, statementsResult] = await Promise.all([
-    withClockSkewRetry(() =>
-      supabase.from("profiles").select("plan").eq("id", userId).maybeSingle()
-    ),
-    withClockSkewRetry(() =>
-      supabase
-        .from("accounts")
-        .select("id, label")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true })
-    ),
-    withClockSkewRetry(() =>
-      supabase
-        .from("uploaded_statements")
-        .select(
-          "id, account_id, file_name, status, row_count, error_message, processing_lease_expires_at, created_at, updated_at"
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-    ),
-  ])
+  const statementsResult = await withClockSkewRetry(() =>
+    supabase
+      .from("uploaded_statements")
+      .select(
+        "id, detected_label, file_name, status, row_count, error_message, processing_lease_expires_at, created_at, updated_at"
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+  )
 
-  if (profileResult.error || accountsResult.error || statementsResult.error) {
+  if (statementsResult.error) {
     throw new Error("업로드 정보를 불러올 수 없습니다.")
   }
 
-  const plan = profileResult.data?.plan === "pro" ? "pro" : "free"
   const requestedUpload = (await searchParams)?.upload
   const initialUploadOpen = requestedUpload === "1"
-  const accounts = accountsResult.data ?? []
   const statements = (statementsResult.data ?? []).map((statement) => {
     const status = statementStatus(statement.status)
     const leaseExpired =
@@ -69,8 +55,8 @@ export default async function UploadsPage({
 
     return {
       statementId: statement.id,
-      accountId: statement.account_id,
       fileName: statement.file_name,
+      detectedLabel: statement.detected_label,
       status,
       rowCount: statement.row_count,
       errorMessage: statement.error_message,
@@ -94,8 +80,6 @@ export default async function UploadsPage({
         </header>
 
         <StatementUploadManager
-          plan={plan}
-          initialAccounts={accounts}
           initialStatements={statements}
           initialUploadOpen={initialUploadOpen}
         />
