@@ -5,9 +5,10 @@
     {
       "step": 0,
       "name": "schema-migration",
-      "status": "error",
+      "status": "completed",
       "started_at": "2026-08-10T18:31:19+0900",
-      "error_message": "새 Supabase 타입이 기존 accounts/account_id 및 구 RPC 호출부를 정확히 거부해 npm run build와 원격 통합 테스트가 실패하며, 해당 애플리케이션·테스트 수정은 Step 0 금지 범위임"
+      "completed_at": "2026-08-10T19:05:00+0900",
+      "summary": "20260810093243_remove_accounts.sql 적용 완료 — accounts 테이블/RLS 삭제, uploaded_statements.account_id 제거 + detected_label(text, nullable) 추가, create_statement_upload(p_user_id, p_file_name, p_declared_size), finalize_statement(..., p_detected_label) 새 시그니처, src/types/supabase.ts 재생성. MCP로 직접 SQL 검증 완료. 애플리케이션 코드는 의도적으로 미수정 — npm run build/test는 step 3까지 계속 깨진 상태가 정상."
     },
     {
       "step": 1,

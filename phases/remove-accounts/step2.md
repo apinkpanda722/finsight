@@ -32,8 +32,9 @@
 
 ## Acceptance Criteria
 
+**중요**: `npm run build`는 이 step 이후에도 실패한 상태가 정상이다 — 대시보드(`dashboard/page.tsx`, `dashboard-insights.tsx`)가 아직 옛 `accounts` 쿼리/prop을 참조 중이며, 그건 step 3이 고친다(전체 그린 빌드는 step 3 완료 후 성립). `npm run build`를 통과시키려고 대시보드 파일을 건드리지 마라. `npm test`는 vitest가 타입 체크 없이 트랜스파일만 하므로 이 step에서도 정상적으로 통과해야 한다.
+
 ```bash
-npm run build
 npm test
 ```
 
@@ -50,5 +51,6 @@ npm test
 - `has_locked_history()` RPC나 그걸 쓰는 대시보드 잠금 배너 로직은 이번 step과 무관하니 건드리지 마라(계좌와 무관한 히스토리 제한이라 그대로 유지).
 - 대시보드(`dashboard/page.tsx`, `dashboard-insights.tsx`)의 계좌 관련 코드는 이번 step에서 건드리지 마라 — step 3의 범위다. (단, `statement-upload-manager.tsx`가 대시보드 컴포넌트를 import하고 있지는 않으므로 충돌은 없을 것이다.)
 - `create_statement_upload`/`finalize_statement` RPC 정의 자체(마이그레이션 SQL)는 이미 step 0에서 끝났다 — 다시 손대지 마라.
+- **`npm run build`를 통과시키겠다고 대시보드 등 이 step 범위 밖의 파일을 고치지 마라.**
 - 드래그 앤 드롭, `pending-upload-context`(대시보드 빈 화면 드롭 → 업로드 페이지 전달) 로직은 계좌와 무관하므로 그대로 유지하고 불필요하게 리팩터링하지 마라.
 - 기존 테스트를 이유 없이 삭제하지 마라 — 계좌 관련이라 더 이상 성립하지 않는 케이스만 정리한다.
