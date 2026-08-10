@@ -7,6 +7,7 @@ const authMocks = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
   resend: vi.fn(),
+  signInWithOAuth: vi.fn(),
   signInWithPassword: vi.fn(),
   signUp: vi.fn(),
 }))
@@ -28,6 +29,7 @@ beforeEach(() => {
   authMocks.createClient.mockReturnValue({
     auth: {
       resend: authMocks.resend,
+      signInWithOAuth: authMocks.signInWithOAuth,
       signInWithPassword: authMocks.signInWithPassword,
       signUp: authMocks.signUp,
     },
@@ -59,6 +61,79 @@ describe("LoginPage", () => {
     render(<LoginPage />)
 
     expect(screen.getByRole("heading", { name: "로그인" })).toBeInTheDocument()
+  })
+
+  it("offers Google login from both the login and signup views", async () => {
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    expect(
+      screen.getByRole("button", { name: "Google로 계속하기" })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "회원가입" }))
+
+    expect(
+      screen.getByRole("button", { name: "Google로 계속하기" })
+    ).toBeInTheDocument()
+  })
+
+  it("starts Google OAuth with the default callback URL", async () => {
+    authMocks.signInWithOAuth.mockResolvedValue({ error: null })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.click(
+      screen.getByRole("button", { name: "Google로 계속하기" })
+    )
+
+    expect(authMocks.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo: "http://localhost:3000/auth/callback",
+      },
+    })
+  })
+
+  it("carries a safe returnTo through to the Google OAuth callback", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/login?view=signup&returnTo=%2Fsettings%2Fbilling"
+    )
+    authMocks.signInWithOAuth.mockResolvedValue({ error: null })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.click(
+      screen.getByRole("button", { name: "Google로 계속하기" })
+    )
+
+    expect(authMocks.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo:
+          "http://localhost:3000/auth/callback?next=%2Fsettings%2Fbilling",
+      },
+    })
+  })
+
+  it("drops an unsafe returnTo from the Google OAuth callback", async () => {
+    window.history.replaceState({}, "", "/login?returnTo=%2F%2Fevil.com")
+    authMocks.signInWithOAuth.mockResolvedValue({ error: null })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.click(
+      screen.getByRole("button", { name: "Google로 계속하기" })
+    )
+
+    expect(authMocks.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo: "http://localhost:3000/auth/callback",
+      },
+    })
   })
 
   it("uses the safe return path after login", async () => {
