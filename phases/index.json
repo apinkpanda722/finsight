@@ -13,6 +13,10 @@
       "dir": "remove-accounts",
       "status": "completed",
       "completed_at": "2026-08-10T19:21:59+0900"
+    },
+    {
+      "dir": "pdf-report-export",
+      "status": "pending"
     }
   ]
 }
