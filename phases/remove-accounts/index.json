@@ -39,7 +39,7 @@
       "name": "sample-statement-refresh",
       "status": "completed",
       "started_at": "2026-08-10T19:17:12+0900",
-      "completed_at": "2026-08-10T19:18:50+0900",
+      "completed_at": "2026-08-10T19:21:59+0900",
       "summary": "샘플 PDF 생성기에 마스킹된 카드번호 preamble 줄을 추가하고, 새 sample-statement.pdf가 제목·카드번호를 모두 preamble로 파싱하도록 갱신했다."
     }
   ],
