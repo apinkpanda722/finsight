@@ -13,7 +13,10 @@
     {
       "step": 1,
       "name": "report-access-service-and-route",
-      "status": "pending"
+      "status": "completed",
+      "summary": "Pro 전용 PDF 리포트 서비스와 인증된 RLS GET 라우트를 구현하고 Vercel 폰트 파일 트레이싱을 검증",
+      "started_at": "2026-08-10T20:16:26+0900",
+      "completed_at": "2026-08-10T20:21:12+0900"
     },
     {
       "step": 2,
