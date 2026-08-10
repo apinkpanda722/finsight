@@ -4,11 +4,6 @@ import { describe, expect, it } from "vitest"
 import { DashboardInsights } from "./dashboard-insights"
 
 const baseProps = {
-  accounts: [
-    { id: "account-1", label: "신한카드" },
-    { id: "account-2", label: "국민은행" },
-  ],
-  activeAccountId: "account-2",
   categories: [{ category: "food_dining", total: 30_000 }],
   monthly: [
     { month: "2026-07", total: 20_000 },
@@ -20,18 +15,11 @@ const baseProps = {
 }
 
 describe("DashboardInsights", () => {
-  it("offers only individual account choices and marks the selected account", () => {
+  it("renders insights without account-selection navigation", () => {
     render(<DashboardInsights {...baseProps} />)
 
-    expect(screen.getByRole("link", { name: "신한카드" })).toHaveAttribute(
-      "href",
-      "/dashboard?account=account-1"
-    )
-    expect(screen.getByRole("link", { name: "국민은행" })).toHaveAttribute(
-      "aria-current",
-      "page"
-    )
-    expect(screen.queryByText(/통합|합산/)).not.toBeInTheDocument()
+    expect(screen.queryByRole("navigation", { name: "계좌 선택" })).not.toBeInTheDocument()
+    expect(screen.getByText("식비")).toBeInTheDocument()
   })
 
   it("renders category amounts and a line-based monthly trend for pro accounts (no lock semantics apply)", () => {
@@ -60,8 +48,6 @@ describe("DashboardInsights", () => {
       <DashboardInsights
         {...baseProps}
         plan="free"
-        accounts={baseProps.accounts.slice(0, 1)}
-        activeAccountId="account-1"
         hasLockedHistory
       />
     )
@@ -80,8 +66,6 @@ describe("DashboardInsights", () => {
       <DashboardInsights
         {...baseProps}
         plan="free"
-        accounts={baseProps.accounts.slice(0, 1)}
-        activeAccountId="account-1"
         hasLockedHistory={false}
       />
     )

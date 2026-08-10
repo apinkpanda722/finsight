@@ -29,7 +29,10 @@
     {
       "step": 3,
       "name": "dashboard-unified-view",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-10T19:12:36+0900",
+      "completed_at": "2026-08-10T19:17:12+0900",
+      "summary": "대시보드의 계좌 조회·선택·거래 필터를 제거하고 로그인 사용자의 모든 RLS 허용 거래를 하나의 통합 인사이트 뷰로 표시하도록 변경했다."
     },
     {
       "step": 4,

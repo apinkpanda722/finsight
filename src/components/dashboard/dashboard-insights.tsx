@@ -7,14 +7,7 @@ import type {
   MonthSummary,
 } from "@/services/dashboardInsightService"
 
-type Account = {
-  id: string
-  label: string
-}
-
 type DashboardInsightsProps = {
-  accounts: Account[]
-  activeAccountId: string
   categories: CategorySummary[]
   monthly: MonthSummary[]
   currentMonth: string
@@ -96,36 +89,6 @@ function LockedMark() {
       aria-hidden="true"
       className="relative block h-2.5 w-3 rounded-[2px] border border-[var(--color-muted)] before:absolute before:-top-1.5 before:left-0.5 before:h-1.5 before:w-1.5 before:rounded-t-full before:border before:border-b-0 before:border-[var(--color-muted)]"
     />
-  )
-}
-
-function AccountChips({
-  accounts,
-  activeAccountId,
-}: Pick<DashboardInsightsProps, "accounts" | "activeAccountId">) {
-  if (accounts.length <= 1) return null
-
-  return (
-    <nav aria-label="계좌 선택" className="mb-6 flex flex-wrap gap-2">
-      {accounts.map((account) => {
-        const active = account.id === activeAccountId
-
-        return (
-          <Link
-            key={account.id}
-            href={`/dashboard?account=${encodeURIComponent(account.id)}`}
-            aria-current={active ? "page" : undefined}
-            className={
-              active
-                ? "rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-on-dark)]"
-                : "rounded-full bg-[var(--color-surface-strong)] px-4 py-2 text-sm text-foreground transition-colors hover:bg-[var(--color-hairline)]"
-            }
-          >
-            {account.label}
-          </Link>
-        )
-      })}
-    </nav>
   )
 }
 
@@ -323,8 +286,6 @@ function MonthlyTrend({
 }
 
 export function DashboardInsights({
-  accounts,
-  activeAccountId,
   categories,
   monthly,
   currentMonth,
@@ -347,11 +308,6 @@ export function DashboardInsights({
 
   return (
     <div>
-      <AccountChips
-        accounts={accounts}
-        activeAccountId={activeAccountId}
-      />
-
       {hasLockedHistory ? (
         <aside className="mb-6 flex flex-col justify-between gap-4 rounded-[var(--radius-xl)] border border-border bg-background p-5 sm:flex-row sm:items-center">
           <div>
