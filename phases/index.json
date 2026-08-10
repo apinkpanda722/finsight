@@ -16,7 +16,8 @@
     },
     {
       "dir": "pdf-report-export",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-08-10T20:29:07+0900"
     }
   ]
 }
