@@ -7,7 +7,8 @@
       "name": "report-pdf-builder",
       "status": "completed",
       "summary": "buildCategoryReportPdf(input: ReportSummaryInput): Promise<Buffer> 구현 및 CATEGORY_LABELS를 src/types/domain.ts로 이동",
-      "started_at": "2026-08-10T20:08:04+0900"
+      "started_at": "2026-08-10T20:08:04+0900",
+      "completed_at": "2026-08-10T20:13:54+0900"
     },
     {
       "step": 1,
