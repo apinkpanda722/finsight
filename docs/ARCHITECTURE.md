@@ -11,7 +11,7 @@ src/
 │   │   ├── login/page.tsx
 │   │   ├── forgot-password/page.tsx
 │   │   ├── reset-password/page.tsx
-│   │   └── auth/callback/route.ts    # signup 확인 / recovery 분기
+│   │   └── auth/callback/route.ts    # signup 확인 / recovery 분기 / Google OAuth code 교환
 │   ├── (dashboard)/
 │   │   ├── layout.tsx
 │   │   ├── dashboard/page.tsx        # 계좌별 카테고리 지출 요약 + 월별 추이

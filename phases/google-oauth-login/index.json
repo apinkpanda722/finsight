@@ -1,0 +1,7 @@
+{
+  "project": "Finsight",
+  "phase": "google-oauth-login",
+  "steps": [
+    { "step": 0, "name": "google-login-button", "status": "pending" }
+  ]
+}
