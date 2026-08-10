@@ -27,7 +27,7 @@ type TrendMonth = MonthSummary & {
   locked: boolean
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
+export const CATEGORY_LABELS: Record<string, string> = {
   food_dining: "식비",
   groceries: "장보기",
   transport: "교통",

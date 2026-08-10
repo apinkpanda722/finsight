@@ -10,9 +10,13 @@ export async function createClient(cookieMethods?: CookieMethodsServer) {
   const adapter: CookieMethodsServer = cookieMethods ?? {
     getAll: () => cookieStore!.getAll(),
     setAll: (cookiesToSet) => {
-      cookiesToSet.forEach(({ name, value, options }) => {
-        cookieStore!.set(name, value, options)
-      })
+      try {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore!.set(name, value, options)
+        })
+      } catch {
+        // Server Component에서 호출된 경우 무시 — 미들웨어가 세션을 갱신한다.
+      }
     },
   }
 

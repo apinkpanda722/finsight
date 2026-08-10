@@ -8,5 +8,6 @@
 --radius-pill:100px;
 --radius-full:9999px;
 --shadow-soft:0 4px 12px rgba(0,0,0,0.04);
+--shadow-glow-primary:0 0 0 1px rgba(28,78,216,0.5),0 0 48px rgba(28,78,216,0.35);
 --border-hairline:1px solid var(--color-hairline);
 }

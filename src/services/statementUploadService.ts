@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { decodeCsvBuffer } from "@/lib/csv/decode"
 import { parseCsv } from "@/lib/csv/parse"
+import { isPdfBuffer, parsePdf } from "@/lib/pdf/parse"
 import type {
   ApiErrorCode,
   CompleteUploadResponse,
@@ -20,6 +21,7 @@ export const ERROR_MESSAGES = {
   file_too_large: "파일이 5MB를 초과합니다.",
   encoding_error: "인코딩 또는 CSV 형식을 인식할 수 없습니다.",
   invalid_csv: "CSV 구조를 읽을 수 없습니다.",
+  invalid_pdf: "PDF 표 구조를 읽을 수 없습니다.",
 } as const
 
 export type ValidationFailureCode = keyof typeof ERROR_MESSAGES
@@ -307,30 +309,44 @@ export async function completeStatementUpload(
     )
   }
 
-  let text: string
-  try {
-    text = decodeCsvBuffer(buf).text
-  } catch {
-    return failValidation(
-      statement,
-      "encoding_error",
-      "인코딩 또는 CSV 형식을 인식할 수 없습니다.",
-      deps,
-      true
-    )
-  }
-
   let rowCount: number
-  try {
-    rowCount = parseCsv(text).rows.length
-  } catch {
-    return failValidation(
-      statement,
-      "invalid_csv",
-      "CSV 구조를 읽을 수 없습니다.",
-      deps,
-      true
-    )
+  if (isPdfBuffer(buf)) {
+    try {
+      rowCount = (await parsePdf(buf)).rows.length
+    } catch {
+      return failValidation(
+        statement,
+        "invalid_pdf",
+        "PDF 표 구조를 읽을 수 없습니다.",
+        deps,
+        true
+      )
+    }
+  } else {
+    let text: string
+    try {
+      text = decodeCsvBuffer(buf).text
+    } catch {
+      return failValidation(
+        statement,
+        "encoding_error",
+        "인코딩 또는 CSV 형식을 인식할 수 없습니다.",
+        deps,
+        true
+      )
+    }
+
+    try {
+      rowCount = parseCsv(text).rows.length
+    } catch {
+      return failValidation(
+        statement,
+        "invalid_csv",
+        "CSV 구조를 읽을 수 없습니다.",
+        deps,
+        true
+      )
+    }
   }
 
   if (rowCount < 1 || rowCount > MAX_ROW_COUNT) {

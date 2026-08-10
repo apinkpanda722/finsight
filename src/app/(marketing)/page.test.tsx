@@ -55,11 +55,52 @@ describe("LandingPage", () => {
         name: "지출을 있는 그대로, 이해하기 쉽게.",
       })
     ).toBeInTheDocument()
+    expect(screen.getByText("개인 가계부")).toBeInTheDocument()
+    expect(screen.getByText("AI 절약 인사이트")).toBeInTheDocument()
     expect(screen.getByText("이번 달 지출")).toBeInTheDocument()
     expect(screen.getByText("카테고리 미리보기")).toBeInTheDocument()
     expect(screen.getByText("자동 컬럼 매핑")).toBeInTheDocument()
     expect(screen.getByText("카테고리 자동 분류")).toBeInTheDocument()
     expect(screen.getByText("계좌별 히스토리")).toBeInTheDocument()
+  })
+
+  it("highlights the raw CSV vs organized result right before pricing", () => {
+    const { container } = render(<LandingPage />)
+
+    expect(
+      screen.getByText("같은 명세서에서 finsight가 무엇을 정리하는지 보여드립니다")
+    ).toBeInTheDocument()
+    expect(screen.getByText("raw_statement.csv")).toBeInTheDocument()
+
+    const text = container.textContent ?? ""
+    const sampleIndex = text.indexOf("가입 전에 분석 결과를 먼저 확인하세요.")
+    const highlightIndex = text.indexOf("raw_statement.csv")
+    const pricingIndex = text.indexOf("필요한 만큼 선택하세요.")
+
+    expect(highlightIndex).toBeGreaterThan(sampleIndex)
+    expect(highlightIndex).toBeLessThan(pricingIndex)
+  })
+
+  it("gives the hero preview cards and the Pro plan the same glow highlight", () => {
+    render(<LandingPage />)
+
+    const heroSpendCard = screen
+      .getByText("이번 달 지출")
+      .closest('[data-slot="card"]')
+    const categoryPreviewCard = screen
+      .getByText("카테고리 미리보기")
+      .closest('[data-slot="card"]')
+    const proCard = screen
+      .getByRole("heading", { name: "Pro" })
+      .closest('[data-slot="card"]')
+    const freeCard = screen
+      .getByRole("heading", { name: "Free" })
+      .closest('[data-slot="card"]')
+
+    for (const card of [heroSpendCard, categoryPreviewCard, proCard]) {
+      expect(card).toHaveClass("shadow-[var(--shadow-glow-primary)]")
+    }
+    expect(freeCard).not.toHaveClass("shadow-[var(--shadow-glow-primary)]")
   })
 
   it("shows a sample statement preview before signup", () => {

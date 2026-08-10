@@ -8,6 +8,7 @@ import {
   reissueUploadUrl,
   retryStatement,
 } from "./statementUploadService"
+import { buildTestPdf } from "@/test/pdf-fixture"
 
 const USER_ID = "8a1ca0d4-0a18-4fa5-b984-0a34eb1d6271"
 const ACCOUNT_ID = "02a4f23e-6ce5-4743-8858-9822cda92031"
@@ -271,6 +272,50 @@ describe("completeStatementUpload", () => {
       status: "failed",
       failure_code: "invalid_csv",
       error_message: "CSV 구조를 읽을 수 없습니다.",
+      updated_at: expect.any(String),
+    })
+    expect(db.remove).toHaveBeenCalledWith([STORAGE_PATH])
+  })
+
+  it("accepts a PDF statement and persists its row count", async () => {
+    const pdf = await buildTestPdf([
+      [{ text: "date", x: 50 }, { text: "amount", x: 400 }],
+      [{ text: "2026-08-07", x: 50 }, { text: "12000", x: 400 }],
+    ])
+    const db = makeSupabase({
+      downloadResult: { data: new Blob([new Uint8Array(pdf)]), error: null },
+    })
+
+    await expect(
+      completeStatementUpload(USER_ID, STATEMENT_ID, {
+        supabase: db.supabase as never,
+      })
+    ).resolves.toEqual({ statementId: STATEMENT_ID, status: "pending" })
+
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "pending",
+        file_size_bytes: pdf.byteLength,
+        row_count: 1,
+      })
+    )
+  })
+
+  it("fails a PDF without a readable table and removes the invalid object", async () => {
+    const pdf = await buildTestPdf([[{ text: "Just a title", x: 50 }]])
+    const db = makeSupabase({
+      downloadResult: { data: new Blob([new Uint8Array(pdf)]), error: null },
+    })
+
+    await expect(
+      completeStatementUpload(USER_ID, STATEMENT_ID, {
+        supabase: db.supabase as never,
+      })
+    ).rejects.toMatchObject({ code: "validation_error" })
+    expect(db.update).toHaveBeenCalledWith({
+      status: "failed",
+      failure_code: "invalid_pdf",
+      error_message: "PDF 표 구조를 읽을 수 없습니다.",
       updated_at: expect.any(String),
     })
     expect(db.remove).toHaveBeenCalledWith([STORAGE_PATH])

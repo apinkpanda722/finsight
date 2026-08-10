@@ -84,12 +84,12 @@ export default async function UploadsPage({
     <main className="p-6 sm:p-10">
       <div className="mx-auto max-w-[960px]">
         <header className="mb-8">
-          <p className="text-sm font-medium text-muted-foreground">CSV 업로드</p>
+          <p className="text-sm font-medium text-muted-foreground">CSV/PDF 업로드</p>
           <h1 className="mt-2 font-heading text-4xl tracking-[-0.03em]">
             명세서 관리
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-body)]">
-            원본 파일은 Supabase Storage에 직접 업로드되며, 서버에서 실제 크기와 CSV 구조를 다시 검증합니다.
+            원본 파일은 Supabase Storage에 직접 업로드되며, 서버에서 실제 크기와 CSV/PDF 구조를 다시 검증합니다.
           </p>
         </header>
 

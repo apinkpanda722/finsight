@@ -344,7 +344,13 @@ export function StatementUploadManager({
   ): Promise<boolean> {
     const supabase = createClient()
     const bucket = supabase.storage.from("statements")
-    const options = { contentType: selectedFile.type || "text/csv" }
+    const options = {
+      contentType:
+        selectedFile.type ||
+        (selectedFile.name.toLowerCase().endsWith(".pdf")
+          ? "application/pdf"
+          : "text/csv"),
+    }
     const firstAttempt = await bucket.uploadToSignedUrl(
       storagePath,
       uploadToken,
@@ -371,8 +377,9 @@ export function StatementUploadManager({
 
   async function startUpload() {
     if (!file || !consent) return
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setUploadError("CSV 파일만 업로드할 수 있습니다.")
+    const lowerFileName = file.name.toLowerCase()
+    if (!lowerFileName.endsWith(".csv") && !lowerFileName.endsWith(".pdf")) {
+      setUploadError("CSV 또는 PDF 파일만 업로드할 수 있습니다.")
       return
     }
     if (file.size < 1 || file.size > MAX_FILE_SIZE_BYTES) {
@@ -584,11 +591,11 @@ export function StatementUploadManager({
         <div>
           <h2 className="font-heading text-xl font-semibold">업로드한 명세서</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {(activeAccount?.label ?? newAccountLabel.trim()) || "신규 계좌"}의 CSV 원본과 처리 상태입니다.
+            {(activeAccount?.label ?? newAccountLabel.trim()) || "신규 계좌"}의 CSV/PDF 원본과 처리 상태입니다.
           </p>
         </div>
         <Button type="button" className="h-11 px-5" onClick={() => setUploadOpen(true)}>
-          CSV 업로드
+          CSV/PDF 업로드
         </Button>
       </div>
 
@@ -625,19 +632,19 @@ export function StatementUploadManager({
               <DialogHeader>
                 <DialogTitle className="text-xl">명세서 업로드</DialogTitle>
                 <DialogDescription>
-                  은행 또는 카드사에서 내려받은 CSV 파일을 업로드하세요.
+                  은행 또는 카드사에서 내려받은 CSV 또는 PDF 파일을 업로드하세요.
                 </DialogDescription>
               </DialogHeader>
 
               <label className="mt-2 block cursor-pointer rounded-[var(--radius-md)] border border-dashed border-border px-4 py-7 text-center text-sm text-muted-foreground">
                 <span className={file ? "financial-number text-foreground" : ""}>
-                  {file ? file.name : "클릭해서 CSV 파일 선택"}
+                  {file ? file.name : "클릭해서 CSV/PDF 파일 선택"}
                 </span>
                 <input
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".csv,.pdf,text/csv,application/pdf"
                   className="sr-only"
-                  aria-label="CSV 파일"
+                  aria-label="CSV/PDF 파일"
                   onChange={(event) => {
                     setFile(event.target.files?.[0] ?? null)
                     setUploadError(null)
@@ -653,7 +660,7 @@ export function StatementUploadManager({
                   onChange={(event) => setConsent(event.target.checked)}
                 />
                 <span>
-                  업로드한 원본 CSV는 처리를 위해 Supabase Storage와 Anthropic(Claude API)에 전달되는 것에 동의합니다.
+                  업로드한 원본 파일은 처리를 위해 Supabase Storage와 Anthropic(Claude API)에 전달되는 것에 동의합니다.
                 </span>
               </label>
 
