@@ -65,3 +65,8 @@ MVP 속도 최우선이되, 실제 플랫폼 제약(Vercel 요청 본문 한도,
 **결정**: Pro 사용자에게 카테고리별 지출 + 월별 추이를 담은 PDF 리포트 다운로드 기능을 제공한다. 생성은 `pdf-lib`(기존 `devDependencies`에서 `dependencies`로 승격, 샘플 명세서 PDF 생성 스크립트가 이미 이 라이브러리를 사용 중이었다)로 서버에서 수행하고, 리포트 내용은 기존 대시보드 집계 로직(`dashboardInsightService`의 `summarizeByCategory`/`summarizeByMonth`)을 그대로 재사용한다.
 **이유**: PRD에 이미 fast-follow 항목으로 있던 "PDF/엑셀 리포트 내보내기" 중 PDF만 먼저 구현하기로 했다(엑셀은 별도 라이브러리 도입이 필요해 범위를 나눔). 계좌 개수 제한이 빠지면서 사라진 Pro 차별화 요소를 대체한다. 리포트 집계 로직을 새로 만들지 않고 대시보드와 동일한 계산을 재사용해 두 화면의 숫자가 어긋날 위험을 없앤다.
 **트레이드오프**: 엑셀 내보내기, 계좌/카드별 리포트 분리 같은 세부 기능은 이번 범위에 없다(fast-follow). PDF 레이아웃이 단순한 텍스트/표 수준으로 시작하며, 시각적으로 정교한 리포트는 이후 개선 대상이다.
+
+**한글 폰트 임베딩(추가 결정)**: 카테고리명("식비", "교통" 등)이 전부 한글이라, 서버(Vercel) 환경에 시스템 한글 폰트가 없는 문제를 폰트 파일 번들링으로 해결해야 했다.
+- **폰트**: Google Fonts 공식 저장소(`google/fonts`, SIL OFL 라이선스)의 Nanum Gothic 정적(non-variable) TTF(Regular/Bold)를 `src/assets/fonts/`에 커밋한다. Noto Sans KR은 가변 폰트(`[wght].ttf`)만 배포되는데, pdf-lib+fontkit 조합에서 가변 폰트를 임베딩하면 한글 조합 글리프 일부가 무작위로 깨지는 문제를 실제로 확인해 정적 폰트로 대체했다.
+- **`subset: false` 필수**: `doc.embedFont(bytes, { subset: true })`로 서브셋 압축을 하면 정적 폰트에서도 동일하게 글리프가 깨진다(pdf-lib/fontkit의 한글 서브셋 처리 버그로 추정). `subset: false`로 폰트 전체를 그대로 임베딩해야 한다 — 생성되는 PDF가 커지지만(폰트당 수백 KB) 리포트 다운로드 용도로는 허용 가능한 수준이다.
+- **트레이드오프**: 폰트 파일이 리포지토리에 약 4MB(Regular+Bold) 추가된다. 서버 사이드 전용이라 클라이언트 번들에는 포함되지 않는다.

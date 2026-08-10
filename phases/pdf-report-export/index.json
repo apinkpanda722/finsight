@@ -1,0 +1,9 @@
+{
+  "project": "Finsight",
+  "phase": "pdf-report-export",
+  "steps": [
+    { "step": 0, "name": "report-pdf-builder", "status": "pending" },
+    { "step": 1, "name": "report-access-service-and-route", "status": "pending" },
+    { "step": 2, "name": "report-download-ui", "status": "pending" }
+  ]
+}
