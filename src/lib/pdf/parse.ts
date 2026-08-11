@@ -1,3 +1,5 @@
+import "./canvas-polyfill"
+
 import {
   getDocument,
   type PDFPageProxy,

@@ -77,7 +77,10 @@
     {
       "step": 9,
       "name": "deploy-production-hardening",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-08-11T18:00:00+0900",
+      "completed_at": "2026-08-11T20:05:00+0900",
+      "summary": "Vercel 프로젝트(tommy-00c8/finsight)를 연결하고 안정 alias(finsight-preview.vercel.app)로 Preview 배포, sandbox env 9종 등록, Polar sandbox webhook(bypass 토큰 필요) 및 Supabase Auth Redirect URL을 등록했다. GitHub 저장소(apinkpanda722/finsight)도 Login Connection 추가 후 정상 연결했다. Preview에서 5가지 E2E(가입~콜백~대시보드, CSV 업로드~카테고리 요약/월별 추이, Pro 체크아웃~webhook~Pro 배지, Customer Portal, Free 히스토리 잠금 배너)를 모두 통과시켰다. 그 과정에서 pdfjs-dist 관련 실배포 버그 2건을 발견해 수정했다: (1) Vercel 서버리스 런타임에 DOMMatrix가 없어 CSV 업로드까지 500 에러가 나던 문제를 @napi-rs/canvas 정적 폴리필(src/lib/pdf/canvas-polyfill.ts)로 해결, (2) pdfjs-dist의 pdf.worker.mjs가 Next.js output file tracing에서 누락되어 실제 PDF 업로드가 invalid_pdf로 실패하던 문제를 next.config.ts의 outputFileTracingIncludes로 해결(사용자가 직접 sample-statement.pdf로 재현·재검증). statementUploadService.ts의 PDF 파싱 catch 블록에 진단용 console.error를 추가했다. 5MB 근접 CSV로 업로드 크기 제한도 확인했다. Supabase advisor는 신규 ERROR 없음(INFO 2건은 의도된 설계/성능 권장사항). docs/DEPLOY.md에 Production 전환 체크리스트를 문서화했고 실제 --prod 전환은 하지 않았다. 코드 변경(package.json, next.config.ts, src/lib/pdf/*, src/services/statementUploadService.ts, docs/DEPLOY.md)은 커밋되지 않은 상태로 남아 있다 — 사용자가 git 작업을 명시적으로 요청하지 않았다."
     }
   ],
   "created_at": "2026-08-07T17:40:55+0900"
