@@ -301,7 +301,12 @@ export async function completeStatementUpload(
   if (isPdfBuffer(buf)) {
     try {
       rowCount = (await parsePdf(buf)).rows.length
-    } catch {
+    } catch (error) {
+      console.error("pdf_parse_failed", {
+        statementId: statement.id,
+        errorCode: "invalid_pdf",
+        error: error instanceof Error ? error.stack : String(error),
+      })
       return failValidation(
         statement,
         "invalid_pdf",

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
+    "@napi-rs/canvas": "^1.0.5",
     "@pdf-lib/fontkit": "^1.1.1",
     "@polar-sh/nextjs": "^0.9.6",
     "@polar-sh/sdk": "^0.47.1",
