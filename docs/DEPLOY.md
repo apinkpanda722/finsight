@@ -1,5 +1,13 @@
 # 배포 가이드 (DEPLOY.md)
 
+## ⚠️ Production 환경변수는 현재 sandbox 값이다
+
+GitHub 연결(`main` push) 후 Vercel이 자동으로 Production 빌드도 트리거하는데, Production 환경변수가 비어 있어 빌드가 실패했다. 아직 진짜 production 리소스(별도 Supabase 프로젝트, Polar production 상품)를 준비하지 못한 상태라, 빌드를 통과시키기 위해 **`.env`의 sandbox 값을 그대로 Vercel Production 환경에도 등록**했다(`POLAR_SERVER=sandbox` 포함, dev Supabase 프로젝트 그대로 사용). 즉:
+
+- 지금 `https://finsight-tommy-00c8.vercel.app`(production alias)는 실제로는 sandbox 백엔드를 바라본다 — 실제 결제도, 실제 사용자 데이터 분리도 없다.
+- 이 상태로는 실사용자에게 이 URL을 공개하면 안 된다.
+- 아래 "Production 전환 체크리스트"를 완료하면 이 sandbox 값들을 진짜 production 값으로 **교체**해야 한다(`vercel env rm <key> production` 후 `vercel env add`로 재등록).
+
 ## 현재 상태 (Preview)
 
 - Vercel 프로젝트: `tommy-00c8/finsight` (`vercel link`로 연결됨)
