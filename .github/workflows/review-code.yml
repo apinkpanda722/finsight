@@ -1,17 +1,27 @@
 name: Review Code
 
+# CI 전용 단일 패스 리뷰. 로컬 대화형 `/review-code`(.claude/commands/review-code.md +
+# .claude/workflows/review-code.js, Workflow 기반 3차원 병렬 리뷰 + skeptic 3명 검증)와는
+# 별개다 — claude-code-action은 Workflow 툴의 백그라운드 완료 알림을 기다려주지 않고
+# (Claude가 "기다리겠다"고 응답하는 순간 정상 종료로 처리) 세션이 끝나버려서, CI에서는
+# Workflow를 거치지 않고 review-code.js의 3차원 기준을 프롬프트에 그대로 풀어 단일
+# 패스(검증 단계 없음)로 돌린다.
 on:
   pull_request:
     types: [opened, synchronize]
 
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: review-code-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-
     steps:
       - uses: actions/checkout@v6
         with:
@@ -22,17 +32,60 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
           prompt: |
-            REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR #${{ github.event.pull_request.number }} (base: ${{ github.event.pull_request.base.ref }})를 코드 리뷰하라. PR 브랜치는 이미 체크아웃돼 있다.
+            변경분은 `git diff origin/${{ github.event.pull_request.base.ref }}...HEAD`로 얻는다. 먼저 CLAUDE.md, docs/ARCHITECTURE.md, docs/ADR.md를 Read해 가드레일로 삼아라.
 
-            /review-code
+            아래 3개 차원으로만 검토하라(finsight CRITICAL 규칙). 이 차원에 해당하는 확실한 위반·버그만 보고하고, 추측성 지적·범위 밖 개선·스타일 취향은 무시하라. 발견이 없으면 findings 없이 넘어가라.
 
-            이 실행은 사람이 없는 CI 자동화 컨텍스트다. `/review-code` 지침 중
-            "게시 직전 사용자 확인을 받는다"는 절차는 건너뛰고, 검증을 통과한
-            발견이 있으면 바로 인라인 코멘트 + PR 요약을 게시하라.
-            `gh pr view`로 PR 번호 자동 감지가 안 되면 위에 given PR NUMBER를
-            직접 사용해 `gh pr view <PR NUMBER> --json number,headRefOid`로
-            조회하라.
+            1) correctness (로직 정확성):
+            - 날짜/금액/부호 변환이 결정론적 코드로 수행되는가. Claude 응답값(카테고리 분류 등)을 날짜/금액처럼 정확해야 하는 값 대신 사용하지 않는가.
+            - 카테고리 분류 100행 batch마다 rowIndex 완전성을 검증하고, 전체 건수와 source debit/credit 합계를 reconciliation하는가 — 누락되면 거래가 조용히 사라질 수 있다.
+            - CSV 업로드 시 인코딩(UTF-8/CP949)·구조(RFC 4180)·행 수(≤2,000) 검증이 올바른가.
+            - Polar webhook에서 modified_at이 profiles.polar_modified_at보다 새로울 때만 UPDATE하는가 — 역순/stale 이벤트가 최신 권한을 되돌리면 안 된다.
+            - processing lease(CAS)·row_index unique 제약 기반 재시도가 중복 거래를 만들지 않는가.
+            - transient(429/5xx/네트워크) vs permanent(refusal/스키마·reconciliation 실패) 에러 분기가 올바른가(전자만 재시도).
+            - 그 외 일반 로직 버그(off-by-one, null/undefined 처리 누락, 잘못된 조건문·비교 연산자, await 누락, race condition).
+
+            2) security (보안):
+            - 라우트 보호/세션 확인에 getClaims() 또는 getUser()만 쓰는가. getSession()은 서버 측 무효화를 확인하지 않으므로 금지.
+            - profiles.plan과 구독 스냅샷 필드(subscription_status, polar_subscription_id, current_period_end, cancel_at_period_end, polar_modified_at)를 검증된 Polar webhook 코드(service_role) 밖에서 갱신하지 않는가.
+            - Supabase Storage 경로에 사용자가 업로드한 원본 file_name을 쓰지 않는가 — {user_id}/{statement_id} 서버 생성 식별자만 사용해야 한다.
+            - transaction description/file_name/error_message를 dangerouslySetInnerHTML이나 원시 HTML로 렌더링하지 않는가 — JSX 텍스트 노드로만.
+            - Polar checkout/portal 라우트가 인증된 same-origin POST만 허용하고, product ID·customer ID를 body/query에서 받지 않고 서버가 세션 사용자 + POLAR_PRO_PRODUCT_ID로 고정하는가.
+            - webhook이 서명 검증을 거치는가.
+            - 그 외 일반 보안 이슈: injection, secret 하드코딩/노출, CSRF, IDOR(다른 사용자 리소스 접근 가능 경로).
+
+            3) architecture (구조 규칙):
+            - 서비스 함수(src/services/*.ts)가 Supabase/Anthropic 클라이언트를 deps: { supabase, anthropic }로 주입받는가 — 내부에서 직접 createServerClient()나 new Anthropic()을 호출하면 위반.
+            - API route handler(src/app/api/**/route.ts)가 얇게 유지되고 실제 로직을 서비스 함수로 위임하는가.
+            - accounts/uploaded_statements/transactions에 대한 쓰기가 반드시 create_statement_upload/finalize_statement RPC를 통하는가 — route handler가 이 테이블에 직접 INSERT/UPDATE하면 위반.
+            - Free 사용자의 과거(최근 3개월 이전) 거래 존재 여부를 UI에 보여줄 때 has_locked_history() RPC만 쓰는가 — 실제 거래를 조회해 존재 여부를 판단하면 위반.
+            - Claude 호출 경계를 지키는가 — 컬럼 매핑은 헤더+샘플 최대 20행만, 카테고리 분류는 100행 단위 batch로만. CSV 전체를 한 번에 넘기면 위반.
+            - 컴포넌트는 src/components/, 타입은 src/types/, 외부 API 래퍼는 src/lib/, 도메인 로직은 src/services/로 분리되는가.
+
+            게시 방법:
+            - 각 발견을 해당 코드 라인에 `mcp__github_inline_comment__create_inline_comment`(confirmed: true)로 인라인 게시하라. 본문 4줄 형식(good이 없으면 그 줄 생략):
+              `[{심각도 이모지} {severity}] {title}` / `TL;DR: {무엇이/왜}` / `✓ Good: {잘 지킨 점}` / `→ Fix: {수정 방안}`
+              심각도 이모지: 🔴 critical · 🟠 major · 🟡 minor · ⚪ nit
+            - 마지막에 요약 1개를 `gh pr comment ${{ github.event.pull_request.number }} --body "..."`로 게시하라. 형식:
+              ```
+              ## 🤖 /review-code - 판정: {Approve|Changes Requested|Blocked}
+              🔴 critical {n} · 🟠 major {n} · 🟡 minor {n} · ⚪ nit {n}
+
+              **Walkthrough**
+              {변경 개요 2~3줄}
+
+              **Critical / Major**
+              - 🔴 [{dimension}] {file}:{line} — {tldr}
+
+              **다음 액션**
+              - 머지 전 반드시 → {critical/major 요약} / 권장 → {minor 요약}
+
+              ---
+              🤖 review-code (CI, single-pass) · correctness/security/architecture 3개 차원 검토
+              ```
+            - 판정 규칙: critical ≥ 1 → Blocked / (critical 0, major ≥ 1) → Changes Requested / 그 외 → Approve.
+            - 위반이 없으면 인라인은 생략하고 요약만 Approve로 게시하라.
+            - 결과는 GitHub 코멘트로만 남기고, 이 세션의 최종 응답 텍스트로 다시 출력하지 마라.
           claude_args: |
-            --allowedTools "Workflow,Bash(git diff:*),Bash(gh pr view:*),Bash(gh api:*),Bash(gh pr comment:*)"
-            --max-turns 30
+            --allowedTools "Read,Bash(git diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
