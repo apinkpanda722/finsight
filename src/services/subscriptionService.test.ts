@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest"
 import {
   getOwnedPolarCustomerId,
   handlePolarWebhookEvent,
-  NoSubscriptionError,
 } from "./subscriptionService"
 
 const USER_ID = "8a1ca0d4-0a18-4fa5-b984-0a34eb1d6271"
@@ -185,7 +184,7 @@ describe("getOwnedPolarCustomerId", () => {
 
     await expect(
       getOwnedPolarCustomerId(USER_ID, { supabase: db.supabase as never })
-    ).rejects.toMatchObject<Partial<NoSubscriptionError>>({
+    ).rejects.toMatchObject({
       code: "no_subscription",
     })
   })
