@@ -1,0 +1,37 @@
+name: Review Code
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            /review-code
+
+            이 실행은 사람이 없는 CI 자동화 컨텍스트다. `/review-code` 지침 중
+            "게시 직전 사용자 확인을 받는다"는 절차는 건너뛰고, 검증을 통과한
+            발견이 있으면 바로 인라인 코멘트 + PR 요약을 게시하라.
+            `gh pr view`로 PR 번호 자동 감지가 안 되면 위에 given PR NUMBER를
+            직접 사용해 `gh pr view <PR NUMBER> --json number,headRefOid`로
+            조회하라.
+          claude_args: |
+            --allowedTools "Workflow,Bash(git diff:*),Bash(gh pr view:*),Bash(gh api:*),Bash(gh pr comment:*)"
+            --max-turns 30
