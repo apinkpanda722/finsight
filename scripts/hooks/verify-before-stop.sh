@@ -19,6 +19,13 @@ cwd=$(jq -r '.cwd // empty' <<< "$input" 2>/dev/null)
 # 정리 등 메타 작업 중)에서는 검증할 앱 코드가 없으므로 통과시킨다.
 [[ -f "$cwd/package.json" ]] || exit 0
 
+# 이번 세션에서 워킹트리에 남긴 변경이 없으면(읽기 전용 리뷰/분석 등) 검증할
+# 대상이 없으므로 통과시킨다. node_modules가 없는 환경(예: 의존성 설치 단계가
+# 없는 CI 리뷰 워크플로우)에서 무의미하게 lint/build/test가 실패해 멈추는 것도 막는다.
+if git -C "$cwd" diff --quiet 2>/dev/null && git -C "$cwd" diff --cached --quiet 2>/dev/null; then
+  exit 0
+fi
+
 output=$(cd "$cwd" && npm run lint 2>&1 && npm run build 2>&1 && npm run test 2>&1)
 status=$?
 
