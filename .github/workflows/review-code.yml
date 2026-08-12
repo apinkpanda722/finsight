@@ -6,12 +6,25 @@ name: Review Code
 # (Claude가 "기다리겠다"고 응답하는 순간 정상 종료로 처리) 세션이 끝나버려서, CI에서는
 # Workflow를 거치지 않고 review-code.js의 3차원 기준을 프롬프트에 그대로 풀어 단일
 # 패스(검증 단계 없음)로 돌린다.
+#
+# 승인/머지는 review 스텝(LLM)이 직접 하지 않는다. review 스텝은 PR에 코멘트를 게시한 뒤
+# 리포지토리 루트에 review-verdict.json(심각도별 발견 개수만 담은 순수 JSON)을 남기고,
+# 별도의 결정론적 쉘 스텝(심각도 게이트)이 jq로 그 파일을 읽어 분기한다 — PR diff/코멘트에
+# 어떤 텍스트가 섞여 있어도 머지 여부는 LLM 판단이 아니라 이 스텝의 고정 로직으로만
+# 결정된다. verdict 파일이 없거나 숫자 파싱에 실패하면 fail-safe로 아무 액션도 하지 않는다
+# (승인·머지 보류).
+#   critical 또는 major ≥ 1 → request-changes (승인·머지 모두 차단)
+#   critical=0, major=0, minor ≥ 1 → 승인만 (머지는 수동)
+#   critical=0, major=0, minor=0 (nit만 있거나 발견 없음) → 승인 + squash 자동 머지 + 브랜치 삭제
+#
+# 사전 준비 확인됨: repo Settings > Actions > "Allow GitHub Actions to create and approve
+# pull requests" 활성화(can_approve_pull_request_reviews=true), "Allow auto-merge" 활성화.
 on:
   pull_request:
     types: [opened, synchronize]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   id-token: write
 
@@ -86,5 +99,56 @@ jobs:
             - 판정 규칙: critical ≥ 1 → Blocked / (critical 0, major ≥ 1) → Changes Requested / 그 외 → Approve.
             - 위반이 없으면 인라인은 생략하고 요약만 Approve로 게시하라.
             - 결과는 GitHub 코멘트로만 남기고, 이 세션의 최종 응답 텍스트로 다시 출력하지 마라.
+            - approve/merge는 절대 직접 하지 마라 — 별도 step이 아래 verdict 파일로 자동 판정한다.
+            - 마지막으로 리포지토리 루트에 `review-verdict.json` 파일을 Write하라. 이번에 실제로 보고한(게시한) 발견만 심각도별로 센 정수만 담고, 다른 키·주석·코드펜스 없이 순수 JSON만 써라:
+              `{"critical": <n>, "major": <n>, "minor": <n>, "nit": <n>}`
           claude_args: |
-            --allowedTools "Read,Bash(git diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
+            --allowedTools "Read,Write,Bash(git diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
+
+      - name: 심각도 게이트 (approve / auto-merge)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if [ ! -f review-verdict.json ]; then
+            echo "::warning::review-verdict.json 없음 — approve/merge 보류(fail-safe)"
+            exit 0
+          fi
+
+          echo "verdict 원문: $(cat review-verdict.json)"
+          critical=$(jq -r '.critical // 0' review-verdict.json)
+          major=$(jq -r '.major // 0' review-verdict.json)
+          minor=$(jq -r '.minor // 0' review-verdict.json)
+
+          for v in "$critical" "$major" "$minor"; do
+            case "$v" in
+              ''|*[!0-9]*)
+                echo "::warning::verdict 숫자 파싱 실패(critical=$critical major=$major minor=$minor) — 보류"
+                exit 0
+                ;;
+            esac
+          done
+
+          echo "집계: critical=$critical · major=$major · minor=$minor"
+
+          if [ "$critical" -gt 0 ] || [ "$major" -gt 0 ]; then
+            echo "→ critical/major 존재: request-changes (approve·merge 차단)"
+            gh pr review "$PR" --request-changes \
+              --body "🔴 critical ${critical} · 🟠 major ${major} 발견 — 머지 차단. 위 인라인/요약 코멘트를 해결하라." \
+              || echo "::warning::request-changes 실패"
+          elif [ "$minor" -gt 0 ]; then
+            echo "→ minor만 존재: approve (머지는 수동)"
+            gh pr review "$PR" --approve \
+              --body "🟡 minor만 발견 — auto-approve. 머지는 수동으로 진행하라." \
+              || echo "::warning::approve 실패"
+          else
+            echo "→ nit 이하/깨끗: approve + auto-merge"
+            gh pr review "$PR" --approve \
+              --body "⚪ nit 이하 — auto-approve + auto-merge." \
+              || echo "::warning::approve 실패"
+            gh pr merge "$PR" --auto --squash --delete-branch \
+              || echo "::warning::auto-merge 실패"
+          fi
