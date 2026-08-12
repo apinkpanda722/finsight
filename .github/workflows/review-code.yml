@@ -30,7 +30,6 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          show_full_output: true
           prompt: |
             PR #${{ github.event.pull_request.number }} (base: ${{ github.event.pull_request.base.ref }})를 코드 리뷰하라. PR 브랜치는 이미 체크아웃돼 있다.
             변경분은 `git diff origin/${{ github.event.pull_request.base.ref }}...HEAD`로 얻는다. 먼저 CLAUDE.md, docs/ARCHITECTURE.md, docs/ADR.md를 Read해 가드레일로 삼아라.
