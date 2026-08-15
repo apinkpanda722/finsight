@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { requireUserId, UnauthorizedError } from "@/lib/api/auth"
 import { apiError } from "@/lib/api/response"
+import { captureServerException } from "@/lib/posthog/server"
 import { createServiceRoleClient } from "@/lib/supabase/server"
 import {
   initStatementUpload,
@@ -46,6 +47,9 @@ export async function POST(request: NextRequest) {
     if (error instanceof StatementUploadError) {
       return apiError(error.code, error.message, error.httpStatus)
     }
+    await captureServerException(error, userId, {
+      route: "statements/init-upload",
+    })
     return apiError("internal_error", "업로드를 시작할 수 없습니다.", 500)
   }
 }

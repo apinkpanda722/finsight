@@ -7,6 +7,7 @@ import {
   within,
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import posthog from "posthog-js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const uiMocks = vi.hoisted(() => ({
@@ -309,6 +310,9 @@ describe("StatementUploadManager", () => {
   })
 
   it("shows rate-limit guidance from init-upload", async () => {
+    const captureSpy = vi.spyOn(posthog, "capture").mockImplementation(
+      () => undefined as never
+    )
     const user = userEvent.setup()
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(
@@ -340,6 +344,98 @@ describe("StatementUploadManager", () => {
       "24시간 업로드 제한에 도달했습니다."
     )
     expect(uiMocks.uploadToSignedUrl).not.toHaveBeenCalled()
+    expect(captureSpy).toHaveBeenCalledWith("statement_upload_quota_exceeded")
+  })
+
+  it("captures a validation-failure event when complete-upload rejects the file", async () => {
+    const captureSpy = vi.spyOn(posthog, "capture").mockImplementation(
+      () => undefined as never
+    )
+    const user = userEvent.setup()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            statementId: "statement-3",
+            storagePath: "user-id/statement-3",
+            uploadToken: "token",
+            status: "uploading",
+          }),
+          { status: 201, headers: { "content-type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: "invalid_csv",
+            message: "CSV 구조를 읽을 수 없습니다.",
+          }),
+          { status: 422, headers: { "content-type": "application/json" } }
+        )
+      )
+
+    render(<StatementUploadManager initialStatements={[]} />)
+
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
+    await user.upload(
+      screen.getByLabelText("CSV/PDF 파일"),
+      new File(["date,amount\n2026-08-07,1"], "statement.csv", {
+        type: "text/csv",
+      })
+    )
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "업로드 시작" }))
+
+    expect(await screen.findByText("CSV 구조를 읽을 수 없습니다.")).toBeInTheDocument()
+    expect(captureSpy).toHaveBeenCalledWith(
+      "statement_upload_validation_failed",
+      { failure_code: "invalid_csv" }
+    )
+  })
+
+  it("captures an exception when the upload flow fails unexpectedly", async () => {
+    const captureExceptionSpy = vi
+      .spyOn(posthog, "captureException")
+      .mockImplementation(() => undefined as never)
+    const user = userEvent.setup()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            statementId: "statement-4",
+            storagePath: "user-id/statement-4",
+            uploadToken: "token",
+            status: "uploading",
+          }),
+          { status: 201, headers: { "content-type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+    uiMocks.uploadToSignedUrl.mockResolvedValue({
+      data: null,
+      error: { message: "network" },
+    })
+
+    render(<StatementUploadManager initialStatements={[]} />)
+
+    await user.click(screen.getByRole("button", { name: "CSV/PDF 업로드" }))
+    await user.upload(
+      screen.getByLabelText("CSV/PDF 파일"),
+      new File(["date,amount\n2026-08-07,1"], "statement.csv", {
+        type: "text/csv",
+      })
+    )
+    await user.click(screen.getByRole("checkbox"))
+    await user.click(screen.getByRole("button", { name: "업로드 시작" }))
+
+    expect(
+      await screen.findByText(
+        "업로드를 완료할 수 없습니다. 네트워크 상태를 확인하고 다시 시도해주세요."
+      )
+    ).toBeInTheDocument()
+    expect(captureExceptionSpy).toHaveBeenCalledWith(
+      new Error("storage_failed")
+    )
   })
 
   it("uses inline confirmation and removes a deleted statement row", async () => {

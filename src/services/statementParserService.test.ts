@@ -1,6 +1,8 @@
 // @vitest-environment node
 
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import { captureServerEvent, captureServerException } from "@/lib/posthog/server"
 
 import {
   applyColumnMapping,
@@ -22,6 +24,16 @@ import {
   type NormalizedRow,
 } from "./statementParserService"
 import { parseCsv } from "@/lib/csv/parse"
+
+vi.mock("@/lib/posthog/server", () => ({
+  captureServerEvent: vi.fn().mockResolvedValue(undefined),
+  captureServerException: vi.fn().mockResolvedValue(undefined),
+}))
+
+beforeEach(() => {
+  vi.mocked(captureServerEvent).mockClear()
+  vi.mocked(captureServerException).mockClear()
+})
 
 const signedMapping: ColumnMapping = {
   detectedLabel: null,
@@ -573,6 +585,76 @@ describe("parseStatement", () => {
       ],
       p_detected_label: "KB Card",
     })
+    expect(captureServerEvent).toHaveBeenCalledWith(
+      "user-id",
+      "statement_processing_completed",
+      { statement_id: "statement-id", row_count: 1 }
+    )
+  })
+
+  it("captures a failure event without an exception trace for known business failures", async () => {
+    const create = vi.fn().mockRejectedValue(new StatementParserError("refusal"))
+
+    const currentStatement = {
+      id: "statement-id",
+      user_id: "user-id",
+      file_name: "kb-card.csv",
+      storage_path: "user-id/statement-id",
+      row_count: 1,
+      status: "pending",
+      processing_lease_expires_at: null,
+      parse_attempt_count: 0,
+    }
+    const initialMaybeSingle = vi.fn().mockResolvedValue({
+      data: currentStatement,
+      error: null,
+    })
+    const initialSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({ maybeSingle: initialMaybeSingle }),
+    })
+    const leaseMaybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        user_id: "user-id",
+        file_name: "kb-card.csv",
+        storage_path: "user-id/statement-id",
+        row_count: 1,
+      },
+      error: null,
+    })
+    const leaseUpdateBuilder = {
+      eq: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnValue({ maybeSingle: leaseMaybeSingle }),
+    }
+    const failUpdateBuilder = { eq: vi.fn().mockReturnThis() }
+    const from = vi
+      .fn()
+      .mockReturnValueOnce({ select: initialSelect })
+      .mockReturnValueOnce({ update: vi.fn().mockReturnValue(leaseUpdateBuilder) })
+      .mockReturnValueOnce({ update: vi.fn().mockReturnValue(failUpdateBuilder) })
+    const download = vi.fn().mockResolvedValue({
+      data: new Blob([
+        ["date,description,amount", "2026-08-07,점심,-12000"].join("\n"),
+      ]),
+      error: null,
+    })
+    const supabase = {
+      from,
+      rpc: vi.fn(),
+      storage: { from: vi.fn().mockReturnValue({ download }) },
+    }
+
+    await parseStatement("statement-id", {
+      supabase: supabase as never,
+      anthropic: { messages: { create } } as never,
+    })
+
+    expect(captureServerEvent).toHaveBeenCalledWith(
+      "user-id",
+      "statement_processing_failed",
+      { statement_id: "statement-id", failure_code: "refusal" }
+    )
+    expect(captureServerException).not.toHaveBeenCalled()
   })
 })
 

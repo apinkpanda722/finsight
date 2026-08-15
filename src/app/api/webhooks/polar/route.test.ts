@@ -4,10 +4,15 @@ const webhookMocks = vi.hoisted(() => ({
   createServiceRoleClient: vi.fn(),
   handlePolarWebhookEvent: vi.fn(),
   webhooks: vi.fn(),
+  captureServerException: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("@polar-sh/nextjs", () => ({
   Webhooks: webhookMocks.webhooks,
+}))
+
+vi.mock("@/lib/posthog/server", () => ({
+  captureServerException: webhookMocks.captureServerException,
 }))
 
 vi.mock("@/lib/env", () => ({
@@ -56,5 +61,21 @@ describe("POST /api/webhooks/polar", () => {
     await expect(
       config.onPayload({ type: "subscription.updated", data: { id: "sub" } })
     ).rejects.toBe(databaseError)
+  })
+
+  it("captures an exception before rethrowing a service error", async () => {
+    const config = webhookMocks.webhooks.mock.calls[0][0]
+    const databaseError = new Error("database unavailable")
+    webhookMocks.handlePolarWebhookEvent.mockRejectedValue(databaseError)
+
+    await expect(
+      config.onPayload({ type: "subscription.updated", data: { id: "sub" } })
+    ).rejects.toBe(databaseError)
+
+    expect(webhookMocks.captureServerException).toHaveBeenCalledWith(
+      databaseError,
+      "polar-webhook",
+      { route: "webhooks/polar" }
+    )
   })
 })

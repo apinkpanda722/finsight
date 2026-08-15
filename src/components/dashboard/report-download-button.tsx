@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import posthog from "posthog-js"
 import { useState } from "react"
 
 import type { Plan } from "@/components/dashboard/plan-badge"
@@ -57,6 +58,9 @@ export function ReportDownloadButton({ plan }: ReportDownloadButtonProps) {
         link.download = "finsight-report.pdf"
         document.body.append(link)
         link.click()
+        posthog.capture("report_downloaded", {
+          report_type: "category_pdf",
+        })
       } finally {
         link.remove()
         URL.revokeObjectURL(objectUrl)

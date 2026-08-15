@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import posthog from "posthog-js"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -378,6 +379,7 @@ export function StatementUploadManager({
       if (!initResponse.ok) {
         const apiFailure = await readJson<ApiErrorBody>(initResponse)
         if (initResponse.status === 429) {
+          posthog.capture("statement_upload_quota_exceeded")
           setStep("select")
           setUploadError(
             apiFailure.message ?? "24시간 업로드 제한에 도달했습니다."
@@ -406,6 +408,9 @@ export function StatementUploadManager({
       )
       if (!completeResponse.ok) {
         const apiFailure = await readJson<ApiErrorBody>(completeResponse)
+        posthog.capture("statement_upload_validation_failed", {
+          failure_code: apiFailure.error ?? "unknown",
+        })
         setUploadError(apiFailure.message ?? "파일을 검증할 수 없습니다.")
         setStep("failed")
         return
@@ -424,10 +429,15 @@ export function StatementUploadManager({
         updatedAt: now,
         retryable: false,
       }
+      posthog.capture("statement_upload_completed", {
+        file_type: lowerFileName.endsWith(".pdf") ? "pdf" : "csv",
+        upload_status: completed.status,
+      })
       setStatements((items) => [nextStatement, ...items])
       setProgress(100)
       setStep(completed.status)
-    } catch {
+    } catch (error) {
+      posthog.captureException(error)
       setUploadError(
         "업로드를 완료할 수 없습니다. 네트워크 상태를 확인하고 다시 시도해주세요."
       )
@@ -445,6 +455,7 @@ export function StatementUploadManager({
       return
     }
 
+    posthog.capture("statement_deleted")
     setStatements((items) =>
       items.filter((item) => item.statementId !== statementId)
     )
@@ -473,6 +484,7 @@ export function StatementUploadManager({
           : item
       )
     )
+    posthog.capture("statement_retry_requested")
     pollCountsRef.current.set(statementId, 0)
     setActiveStatementId(statementId)
     setStep("pending")
