@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { isSafeReturnPath } from "@/lib/auth/return-path"
+import { captureServerException } from "@/lib/posthog/server"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
@@ -17,6 +18,9 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
+    await captureServerException(error, "auth-callback", {
+      route: "auth/callback",
+    })
     return NextResponse.redirect(
       new URL("/login?error=auth_callback_failed", request.url)
     )

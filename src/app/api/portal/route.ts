@@ -7,6 +7,7 @@ import {
   UnauthorizedError,
 } from "@/lib/api/auth"
 import { createPolarClient } from "@/lib/polar/client"
+import { captureServerException } from "@/lib/posthog/server"
 import { createClient } from "@/lib/supabase/server"
 import {
   getOwnedPolarCustomerId,
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       )
     }
+    await captureServerException(error, userId, { route: "portal" })
     throw error
   }
 }

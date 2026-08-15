@@ -42,7 +42,7 @@ describe("usePendingUpload", () => {
   it("hands off a file set via setPendingFile to a single takePendingFile call, then clears it", async () => {
     const user = userEvent.setup()
     render(
-      <PendingUploadProvider>
+      <PendingUploadProvider userId="user-id">
         <Probe />
       </PendingUploadProvider>
     )

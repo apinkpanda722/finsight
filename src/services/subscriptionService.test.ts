@@ -1,9 +1,19 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import { captureServerEvent } from "@/lib/posthog/server"
 
 import {
   getOwnedPolarCustomerId,
   handlePolarWebhookEvent,
 } from "./subscriptionService"
+
+vi.mock("@/lib/posthog/server", () => ({
+  captureServerEvent: vi.fn().mockResolvedValue(undefined),
+}))
+
+beforeEach(() => {
+  vi.mocked(captureServerEvent).mockClear()
+})
 
 const USER_ID = "8a1ca0d4-0a18-4fa5-b984-0a34eb1d6271"
 const PRODUCT_ID = "1a1831cb-d013-431d-bd5d-d047ab1e12d1"
@@ -32,13 +42,20 @@ function subscriptionPayload(
   }
 }
 
-function webhookSupabase(result: { error: unknown } = { error: null }) {
-  const or = vi.fn().mockResolvedValue(result)
+function webhookSupabase(
+  result: { data: { id: string } | null; error: unknown } = {
+    data: { id: "profile_123" },
+    error: null,
+  }
+) {
+  const maybeSingle = vi.fn().mockResolvedValue(result)
+  const select = vi.fn().mockReturnValue({ maybeSingle })
+  const or = vi.fn().mockReturnValue({ select })
   const eq = vi.fn().mockReturnValue({ or })
   const update = vi.fn().mockReturnValue({ eq })
   const from = vi.fn().mockReturnValue({ update })
 
-  return { supabase: { from }, from, update, eq, or }
+  return { supabase: { from }, from, update, eq, or, select, maybeSingle }
 }
 
 function profileSupabase(result: {
@@ -150,7 +167,7 @@ describe("handlePolarWebhookEvent", () => {
 
   it("propagates database errors for webhook retries", async () => {
     const databaseError = new Error("database unavailable")
-    const db = webhookSupabase({ error: databaseError })
+    const db = webhookSupabase({ data: null, error: databaseError })
 
     await expect(
       handlePolarWebhookEvent(subscriptionPayload("active"), {
@@ -158,6 +175,36 @@ describe("handlePolarWebhookEvent", () => {
         proProductId: PRODUCT_ID,
       })
     ).rejects.toBe(databaseError)
+  })
+
+  it("captures a subscription_status_changed analytics event when the update applies", async () => {
+    const db = webhookSupabase()
+
+    await handlePolarWebhookEvent(subscriptionPayload("active"), {
+      supabase: db.supabase as never,
+      proProductId: PRODUCT_ID,
+    })
+
+    expect(captureServerEvent).toHaveBeenCalledWith(
+      USER_ID,
+      "subscription_status_changed",
+      {
+        plan: "pro",
+        subscription_status: "active",
+        cancel_at_period_end: false,
+      }
+    )
+  })
+
+  it("does not capture an analytics event for a stale/replayed webhook", async () => {
+    const db = webhookSupabase({ data: null, error: null })
+
+    await handlePolarWebhookEvent(subscriptionPayload("active"), {
+      supabase: db.supabase as never,
+      proProductId: PRODUCT_ID,
+    })
+
+    expect(captureServerEvent).not.toHaveBeenCalled()
   })
 })
 

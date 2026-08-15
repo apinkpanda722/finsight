@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { requireUserId, UnauthorizedError } from "@/lib/api/auth"
 import { apiError } from "@/lib/api/response"
+import { captureServerException } from "@/lib/posthog/server"
 import { createServiceRoleClient } from "@/lib/supabase/server"
 import {
   deleteOwnedStatement,
@@ -43,6 +44,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     if (error instanceof StatementUploadError) {
       return apiError(error.code, error.message, error.httpStatus)
     }
+    await captureServerException(error, auth.userId, {
+      route: "statements/[id]#GET",
+    })
     return apiError("internal_error", "명세서를 확인할 수 없습니다.", 500)
   }
 }
@@ -64,6 +68,9 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     if (error instanceof StatementUploadError) {
       return apiError(error.code, error.message, error.httpStatus)
     }
+    await captureServerException(error, auth.userId, {
+      route: "statements/[id]#DELETE",
+    })
     return apiError("internal_error", "명세서를 삭제할 수 없습니다.", 500)
   }
 }

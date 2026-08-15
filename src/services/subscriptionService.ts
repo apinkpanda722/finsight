@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { z } from "zod"
 
+import { captureServerEvent } from "@/lib/posthog/server"
 import type { Database } from "@/types/supabase"
 
 type SubscriptionServiceDeps = {
@@ -96,10 +97,11 @@ export async function handlePolarWebhookEvent(
       ? null
       : toIsoString(subscription.currentPeriodEnd, "currentPeriodEnd")
 
-  const { error } = await deps.supabase
+  const plan = proStatuses.has(subscription.status) ? "pro" : "free"
+  const { data, error } = await deps.supabase
     .from("profiles")
     .update({
-      plan: proStatuses.has(subscription.status) ? "pro" : "free",
+      plan,
       subscription_status: subscription.status,
       polar_subscription_id: subscription.id,
       polar_customer_id: customer.id,
@@ -110,6 +112,17 @@ export async function handlePolarWebhookEvent(
     })
     .eq("id", parsedUserId.data)
     .or(`polar_modified_at.is.null,polar_modified_at.lt.${modifiedAt}`)
+    .select("id")
+    .maybeSingle()
 
   if (error) throw error
+  // A stale/replayed webhook matches no row (the .or() filter excludes it) —
+  // only report analytics for updates that actually applied.
+  if (!data) return
+
+  await captureServerEvent(parsedUserId.data, "subscription_status_changed", {
+    plan,
+    subscription_status: subscription.status,
+    cancel_at_period_end: subscription.cancelAtPeriodEnd === true,
+  })
 }

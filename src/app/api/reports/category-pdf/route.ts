@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { requireUserId, UnauthorizedError } from "@/lib/api/auth"
 import { apiError } from "@/lib/api/response"
+import { captureServerException } from "@/lib/posthog/server"
 import { createClient } from "@/lib/supabase/server"
 import { getMonthKey } from "@/services/dashboardInsightService"
 import {
@@ -10,8 +11,17 @@ import {
 } from "@/services/reportService"
 
 export async function GET() {
+  let userId: string
   try {
-    const userId = await requireUserId()
+    userId = await requireUserId()
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return apiError("unauthorized", "로그인이 필요합니다.", 401)
+    }
+    return apiError("internal_error", "요청을 처리할 수 없습니다.", 500)
+  }
+
+  try {
     const supabase = await createClient()
     const buffer = await generateCategoryReportPdf(userId, { supabase })
     const currentMonth = getMonthKey()
@@ -24,9 +34,6 @@ export async function GET() {
       },
     })
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return apiError("unauthorized", "로그인이 필요합니다.", 401)
-    }
     if (error instanceof ReportAccessError) {
       return apiError(
         "forbidden",
@@ -34,6 +41,9 @@ export async function GET() {
         403
       )
     }
+    await captureServerException(error, userId, {
+      route: "reports/category-pdf",
+    })
     return apiError("internal_error", "리포트를 생성할 수 없습니다.", 500)
   }
 }

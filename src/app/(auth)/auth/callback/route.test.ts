@@ -4,10 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const authMocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   exchangeCodeForSession: vi.fn(),
+  captureServerException: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: authMocks.createClient,
+}))
+
+vi.mock("@/lib/posthog/server", () => ({
+  captureServerException: authMocks.captureServerException,
 }))
 
 import { GET } from "./route"
@@ -53,6 +58,24 @@ describe("GET /auth/callback", () => {
 
     expect(response.headers.get("location")).toBe(
       "https://finsight.test/dashboard"
+    )
+  })
+
+  it("captures an exception and redirects to login when the exchange fails", async () => {
+    const sessionError = new Error("invalid grant")
+    authMocks.exchangeCodeForSession.mockResolvedValue({ error: sessionError })
+
+    const response = await GET(
+      new NextRequest("https://finsight.test/auth/callback?code=pkce-code")
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "https://finsight.test/login?error=auth_callback_failed"
+    )
+    expect(authMocks.captureServerException).toHaveBeenCalledWith(
+      sessionError,
+      "auth-callback",
+      { route: "auth/callback" }
     )
   })
 })

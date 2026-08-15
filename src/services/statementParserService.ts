@@ -6,6 +6,7 @@ import { z } from "zod"
 import { decodeCsvBuffer } from "@/lib/csv/decode"
 import { parseCsv } from "@/lib/csv/parse"
 import { isPdfBuffer, parsePdf } from "@/lib/pdf/parse"
+import { captureServerEvent, captureServerException } from "@/lib/posthog/server"
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
@@ -797,15 +798,30 @@ export async function parseStatement(
       throw new StatementParserError("unknown")
     }
     if (!finalized) return
+
+    await captureServerEvent(lease.userId, "statement_processing_completed", {
+      statement_id: statementId,
+      row_count: transactions.length,
+    })
   } catch (error) {
+    const failureCode = classifyFailure(error)
     try {
-      await markStatementFailed(
-        statementId,
-        classifyFailure(error),
-        deps.supabase
-      )
+      await markStatementFailed(statementId, failureCode, deps.supabase)
     } catch {
       // Avoid surfacing raw provider or CSV-derived errors from background work.
+    }
+
+    await captureServerEvent(lease.userId, "statement_processing_failed", {
+      statement_id: statementId,
+      failure_code: failureCode,
+    })
+    // Known business failure codes (refusal, provider outage, bad CSV data, ...)
+    // are already visible via the event above; only truly unexpected errors
+    // need a full exception trace for engineering triage.
+    if (failureCode === "unknown") {
+      await captureServerException(error, lease.userId, {
+        statement_id: statementId,
+      })
     }
   }
 }

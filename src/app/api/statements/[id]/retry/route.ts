@@ -3,6 +3,7 @@ import { after, NextResponse, type NextRequest } from "next/server"
 import { requireUserId, UnauthorizedError } from "@/lib/api/auth"
 import { apiError } from "@/lib/api/response"
 import { createAnthropicClient } from "@/lib/anthropic/client"
+import { captureServerException } from "@/lib/posthog/server"
 import { createServiceRoleClient } from "@/lib/supabase/server"
 import { parseStatement } from "@/services/statementParserService"
 import {
@@ -44,6 +45,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     if (error instanceof StatementUploadError) {
       return apiError(error.code, error.message, error.httpStatus)
     }
+    await captureServerException(error, userId, {
+      route: "statements/[id]/retry",
+    })
     return apiError("internal_error", "분석을 재시도할 수 없습니다.", 500)
   }
 }

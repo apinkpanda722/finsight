@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import posthog from "posthog-js"
 import { FormEvent, Suspense, useMemo, useState } from "react"
 
 import { AuthShell, FormField } from "@/components/auth/auth-shell"
@@ -96,16 +97,26 @@ function LoginContent() {
     setEmailNotConfirmed(false)
     setIsSubmitting(true)
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { data, error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
     setIsSubmitting(false)
     if (signInError) {
       setError(signInError.message)
       setEmailNotConfirmed(isEmailNotConfirmed(signInError))
       return
+    }
+
+    if (data?.user?.id) {
+      posthog.identify(data.user.id, {
+        email: data.user.email,
+      })
+      posthog.capture("login_succeeded", {
+        method: "password",
+      })
     }
 
     const returnTo = searchParams.get("returnTo")
@@ -133,7 +144,7 @@ function LoginContent() {
     const callbackUrl = buildCallbackUrl()
 
     setIsSubmitting(true)
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -145,6 +156,15 @@ function LoginContent() {
     if (signUpError) {
       setError(signUpError.message)
       return
+    }
+
+    if (data?.user?.id) {
+      posthog.identify(data.user.id, {
+        email: data.user.email,
+      })
+      posthog.capture("signup_completed", {
+        method: "email",
+      })
     }
 
     setView("verify")
@@ -163,7 +183,12 @@ function LoginContent() {
 
     if (googleLoginError) {
       setError(googleLoginError.message)
+      return
     }
+
+    posthog.capture("oauth_sign_in_started", {
+      provider: "google",
+    })
   }
 
   async function handleResend() {

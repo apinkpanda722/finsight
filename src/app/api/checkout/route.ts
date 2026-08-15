@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/auth"
 import { getServerEnv } from "@/lib/env"
 import { createPolarClient } from "@/lib/polar/client"
+import { captureServerException } from "@/lib/posthog/server"
 
 export async function POST(request: NextRequest) {
   let userId: string
@@ -27,11 +28,17 @@ export async function POST(request: NextRequest) {
 
   const env = getServerEnv()
   const polar = createPolarClient()
-  const checkout = await polar.checkouts.create({
-    products: [env.POLAR_PRO_PRODUCT_ID],
-    externalCustomerId: userId,
-    successUrl: env.SUCCESS_URL,
-  })
 
-  return NextResponse.redirect(checkout.url, 303)
+  try {
+    const checkout = await polar.checkouts.create({
+      products: [env.POLAR_PRO_PRODUCT_ID],
+      externalCustomerId: userId,
+      successUrl: env.SUCCESS_URL,
+    })
+
+    return NextResponse.redirect(checkout.url, 303)
+  } catch (error) {
+    await captureServerException(error, userId, { route: "checkout" })
+    throw error
+  }
 }

@@ -55,7 +55,7 @@ describe("EmptyDashboardCard", () => {
 
   it("hands a dropped file off to the uploads page via the pending-upload context, then navigates there", async () => {
     render(
-      <PendingUploadProvider>
+      <PendingUploadProvider userId="user-id">
         <EmptyDashboardCard />
         <PendingFileProbe />
       </PendingUploadProvider>

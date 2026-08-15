@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import posthog from "posthog-js"
 import { FormEvent, useMemo, useState } from "react"
 
 import { AuthShell, FormField } from "@/components/auth/auth-shell"
@@ -33,6 +34,7 @@ export default function ForgotPasswordPage() {
       return
     }
 
+    posthog.capture("password_reset_requested")
     setSent(true)
   }
 
