@@ -1,0 +1,126 @@
+{
+  "project": "finsight",
+  "project_ref": "fzfljvkksxpqhxdgzlpr",
+  "date": "2026-08-15",
+  "posture": {
+    "label": "Hardening Recommended",
+    "level": "amber",
+    "desc": "보안 WARN 2건 중 1건(leaked password protection)은 수동 조치 필요. 나머지는 코드 교차분석 결과 이미 안전하게 설계됨. 성능 INFO 2건(누락 인덱스)은 적용 완료."
+  },
+  "counts": {
+    "security": 3,
+    "performance": 4,
+    "proposed": 0,
+    "applied": 2,
+    "kept": 4
+  },
+  "tiers": [
+    {
+      "key": "auto",
+      "n": 2
+    },
+    {
+      "key": "judgment",
+      "n": 0
+    },
+    {
+      "key": "config",
+      "n": 1
+    },
+    {
+      "key": "keep",
+      "n": 4
+    }
+  ],
+  "findings": [
+    {
+      "lint": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "category": "PERFORMANCE",
+      "level": "INFO",
+      "tier": "auto",
+      "status": "applied",
+      "target": "public.transactions · transactions_user_id_statement_id_fkey",
+      "detail": "Table `public.transactions` has a foreign key `transactions_user_id_statement_id_fkey` without a covering index.",
+      "verdict": "composite FK (user_id, statement_id) → uploaded_statements(user_id, id) 순서 그대로 커버링 인덱스 추가. 기존 인덱스((user_id, transaction_date), (statement_id, row_index) unique)는 이 순서를 커버하지 못했음. 순수 추가라 동작 불변.",
+      "fix": "create index idx_transactions_user_statement on public.transactions (user_id, statement_id);",
+      "migration_file": "supabase/migrations/20260815042426_add_transactions_user_statement_index.sql",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+    },
+    {
+      "lint": "unindexed_foreign_keys",
+      "title": "Unindexed foreign keys",
+      "category": "PERFORMANCE",
+      "level": "INFO",
+      "tier": "auto",
+      "status": "applied",
+      "target": "public.upload_usage · upload_usage_statement_id_fkey",
+      "detail": "Table `public.upload_usage` has a foreign key `upload_usage_statement_id_fkey` without a covering index.",
+      "verdict": "단일 컬럼 FK statement_id → uploaded_statements(id)에 인덱스 추가. 기존 인덱스((user_id, created_at))는 statement_id를 커버하지 못했음. 순수 추가라 동작 불변.",
+      "fix": "create index idx_upload_usage_statement on public.upload_usage (statement_id);",
+      "migration_file": "supabase/migrations/20260815042436_add_upload_usage_statement_index.sql",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+    },
+    {
+      "lint": "auth_leaked_password_protection",
+      "title": "Leaked Password Protection Disabled",
+      "category": "SECURITY",
+      "level": "WARN",
+      "tier": "config",
+      "status": "manual",
+      "target": "Auth settings",
+      "detail": "Supabase Auth prevents the use of compromised passwords by checking against HaveIBeenPwned.org. Enable this feature to enhance security.",
+      "verdict": "Auth 서비스 설정이라 apply_migration으로 반영 불가. finsight는 이메일/비밀번호 로그인이 있어 실질적으로 유효한 조치 항목(N/A 아님).",
+      "fix": "Dashboard → Authentication → Policies(Password) → \"Leaked password protection\" 활성화. 또는 Management API: PATCH /v1/projects/{ref}/config/auth { \"password_hibp_enabled\": true }",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    },
+    {
+      "lint": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "category": "SECURITY",
+      "level": "WARN",
+      "tier": "keep",
+      "status": "kept",
+      "target": "public.has_locked_history()",
+      "detail": "Function `public.has_locked_history()` can be executed by the `authenticated` role as a SECURITY DEFINER function via `/rest/v1/rpc/has_locked_history`.",
+      "verdict": "함수 정의(20260807090833_initial_schema.sql)에 이미 set search_path = '' 고정 + (select auth.uid())로 호출자 범위 제한 + revoke all ... grant execute to authenticated만 명시. Free 사용자 잠금 UI가 의도적으로 호출하는 RPC — 결정 트리상 '본문이 소유권을 강제' 분기 → 안전, keep.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    {
+      "lint": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "category": "SECURITY",
+      "level": "INFO",
+      "tier": "keep",
+      "status": "kept",
+      "target": "public.upload_usage",
+      "detail": "Table `public.upload_usage` has RLS enabled, but no policies exist.",
+      "verdict": "마이그레이션 주석에 'authenticated 정책을 의도적으로 하나도 만들지 않는다(RPC로만 기록/조회)'라고 명시. client 코드에서 upload_usage 직접 접근 없음(grep 확인). RLS enabled + no policy = 의도된 deny-all.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "lint": "unused_index",
+      "title": "Unused Index",
+      "category": "PERFORMANCE",
+      "level": "INFO",
+      "tier": "keep",
+      "status": "kept",
+      "target": "public.transactions · idx_transactions_user_statement",
+      "detail": "Index `idx_transactions_user_statement` on table `public.transactions` has not been used.",
+      "verdict": "이번 세션에 방금 생성한 인덱스라 트래픽이 아직 없어 나타나는 예상된 신호(오탐에 가까움). FK 커버링 목적이라 유지 — 실사용 트래픽이 쌓인 뒤 다음 세션에서 재확인.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+    },
+    {
+      "lint": "unused_index",
+      "title": "Unused Index",
+      "category": "PERFORMANCE",
+      "level": "INFO",
+      "tier": "keep",
+      "status": "kept",
+      "target": "public.upload_usage · idx_upload_usage_statement",
+      "detail": "Index `idx_upload_usage_statement` on table `public.upload_usage` has not been used.",
+      "verdict": "이번 세션에 방금 생성한 인덱스라 트래픽이 아직 없어 나타나는 예상된 신호(오탐에 가까움). FK 커버링 목적이라 유지 — 실사용 트래픽이 쌓인 뒤 다음 세션에서 재확인.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+    }
+  ]
+}
