@@ -21,3 +21,10 @@ phases/**/phase*-output.json
 phases/**/step*-output.json
 .vercel
 .env*
+.next-lh*
+
+# Lighthouse 측정 로컬 산출물 (scripts/lh/PROGRAM.md 참고 — 커밋 금지)
+scripts/lh/scores.json
+scripts/lh/baseline.json
+scripts/lh/reports/
+scripts/lh/*.log
