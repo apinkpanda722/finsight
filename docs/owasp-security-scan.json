@@ -1,0 +1,113 @@
+{
+  "repo": "finsight",
+  "scope": "full repository",
+  "date": "2026-08-15",
+  "branch": "main",
+  "files_scanned": 195,
+  "posture": {
+    "label": "Hardening Needed",
+    "level": "amber",
+    "desc": "critical/high는 없음(npm audit high 4건은 검증 결과 이 앱에서 도달 불가로 기각). A09/A10의 로깅·예외처리 공백과 A03의 CI 워크플로우 SHA 미고정이 남은 medium 리스크."
+  },
+  "counts": { "critical": 0, "high": 0, "medium": 3, "low": 3, "info": 1 },
+  "categories": [
+    { "id": "A01", "name": "Broken Access Control", "max": "clean", "status": "확인된 위반 없음 — RPC의 p_user_id는 전부 세션(getClaims)에서, 소유권 검증 전수 확인(9개 API route)" },
+    { "id": "A02", "name": "Security Misconfiguration", "max": "low", "status": "보안 응답 헤더(CSP/HSTS/X-Frame-Options) 미설정, X-Powered-By 노출 — low" },
+    { "id": "A03", "name": "Software Supply Chain Failures", "max": "medium", "status": "npm audit high 4건(next/postcss/sharp/nanoid)은 검증 결과 도달 불가로 기각. CI workflow가 서드파티 action을 SHA 미고정 + write 권한·시크릿과 함께 사용 — medium" },
+    { "id": "A04", "name": "Cryptographic Failures", "max": "clean", "status": "확인된 위반 없음 — statement_id/storage_path/업로드 토큰 전부 서버(DB gen_random_uuid, Storage 서명 URL) 생성, 시크릿 하드코딩 없음" },
+    { "id": "A05", "name": "Injection", "max": "clean", "status": "확인된 위반 없음 — 프롬프트 인젝션 방어(데이터/지시 태그 분리 + 구조화 출력 강제), dangerouslySetInnerHTML/eval/raw SQL 없음" },
+    { "id": "A06", "name": "Insecure Design", "max": "clean", "status": "확인된 위반 없음 — 업로드 rate limit이 RPC 내 advisory lock으로 원자적, 서비스 DI 경계·Claude 호출 범위(20행/100행 batch) 준수" },
+    { "id": "A07", "name": "Authentication Failures", "max": "info", "status": "getSession() 오용 0건. 세션 쿠키 httpOnly:false(Supabase SDK 기본값) 관찰 — info" },
+    { "id": "A08", "name": "Software or Data Integrity Failures", "max": "clean", "status": "확인된 위반 없음 — webhook 서명검증이 파싱 전 선행(fail-closed), polar_modified_at 단조 검사 존재, RPC 우회 쓰기 경로 없음" },
+    { "id": "A09", "name": "Security Logging and Alerting Failures", "max": "medium", "status": "과다 로깅(PII) 위반은 없으나, rate_limited/profile_not_found 등 보안·정합성 이벤트가 구조화 로그로 전혀 남지 않음 — medium" },
+    { "id": "A10", "name": "Mishandling of Exceptional Conditions", "max": "medium", "status": "parseStatement 실패 원인이 빈 catch로 삼켜짐(medium). finalize_statement 호출에 재시도 누락(low)" }
+  ],
+  "findings": [
+    {
+      "owasp": "A09",
+      "severity": "medium",
+      "title": "명세서 API 전 구간에서 보안·정합성 RPC 예외와 예기치 못한 내부 오류가 서버 로그에 전혀 남지 않음",
+      "file": "src/services/statementUploadService.ts",
+      "line": 64,
+      "evidence": "mapRpcError()(64-87)는 create_statement_upload RPC가 던지는 'rate_limited'(24시간 10회 제한 위반)나 'profile_not_found' 예외 텍스트를 매칭해 StatementUploadError로 변환하지만 어디에도 로깅하지 않는다. 이후 src/app/api/statements/init-upload/route.ts, [id]/complete-upload/route.ts, [id]/retry/route.ts, [id]/route.ts, [id]/upload-url/route.ts의 각 catch(error) 블록은 apiError(error.code, error.message, error.httpStatus)로 클라이언트 응답만 만들고 콘솔 로깅이 전혀 없다. 예기치 못한 예외의 fallback('internal_error', 500)도 마찬가지로 로깅 없이 원인이 사라진다. 대조적으로 src/app/api/checkout/route.ts, src/app/api/portal/route.ts는 예기치 못한 에러를 throw error로 재던져 Next.js 기본 핸들러가 서버 로그에 남기도록 한다. 실제로 src 전체(테스트 제외)에서 console.* 호출은 단 2곳뿐이다(dashboard/page.tsx, statementUploadService.ts:305). 업로드 남용 탐지(반복 rate_limited), 정합성 버그(profile_not_found), reconciliation 실패 같은 사고 대응 필수 이벤트가 하나도 기록되지 않는다.",
+      "fix": "mapRpcError 진입 시점 또는 각 route handler의 catch(error) 블록에서 최소 console.error(<event>, { statementId, userId, errorCode }) 형태로 구조화 로깅을 추가한다. CSV 원문·프롬프트·description 배열은 포함하지 않는다(CLAUDE.md CRITICAL 준수).",
+      "confidence": "high",
+      "verified": false
+    },
+    {
+      "owasp": "A10",
+      "severity": "medium",
+      "title": "parseStatement 실패 시 원인이 어디에도 로깅되지 않고 빈 catch로 삼켜짐",
+      "file": "src/services/statementParserService.ts",
+      "line": 800,
+      "evidence": "parseStatement()의 outer catch(800)는 실패 원인(error)을 한 번도 로깅하지 않고 곧바로 markStatementFailed(statementId, classifyFailure(error), supabase)만 호출한다. markStatementFailed 자체가 실패하는 경우에 대비한 inner try/catch(807-809)는 완전히 빈 catch다: `catch { // Avoid surfacing raw provider or CSV-derived errors from background work. }`. 결과적으로 (1) 최초 파싱 실패 이유가 서버 로그에 전혀 기록되지 않고, (2) DB 업데이트 자체가 실패하는 2차 장애가 발생해도 감지할 방법이 없다. 해당 statement는 processing_lease_expires_at(5분 lease)이 자연 만료될 때까지 원인 불명 상태로 남는다.",
+      "fix": "outer catch에서 markStatementFailed 호출 전에 console.error('statement_parse_failed', { statementId, errorCode: classifyFailure(error) })처럼 CLAUDE.md 허용 필드(statementId/errorCode)만 담아 로깅한다. inner catch도 최소 console.error('statement_fail_update_failed', { statementId })를 남긴다.",
+      "confidence": "high",
+      "verified": false
+    },
+    {
+      "owasp": "A03",
+      "severity": "medium",
+      "title": "review-code.yml이 서드파티 GitHub Action을 커밋 SHA가 아닌 가변 태그로 고정 + write 권한과 시크릿 동시 노출",
+      "file": ".github/workflows/review-code.yml",
+      "line": 40,
+      "evidence": "`.github/workflows/review-code.yml:40` `uses: actions/checkout@v6`, `:44` `uses: anthropics/claude-code-action@v1` — 둘 다 커밋 SHA가 아닌 메이저 버전 태그로 고정. 같은 워크플로가 permissions: contents:write, pull-requests:write, issues:write, id-token:write(26-30행)를 선언하고 secrets.CLAUDE_CODE_OAUTH_TOKEN(46행)을 전달하며, 마지막 단계는 gh pr merge --auto --squash --delete-branch(153행)까지 자동 실행한다. pull_request(pull_request_target 아님) 트리거라 포크 PR의 노출은 GitHub 기본 정책상 제한적이지만, 같은 저장소 브랜치에서 연 PR은 write 권한과 토큰을 그대로 받는다. 두 action 태그가 업스트림에서 재지정(tag mutation)되면 이 write 권한과 토큰이 그대로 넘어간다.",
+      "fix": "두 action을 태그가 아닌 커밋 SHA로 고정(actions/checkout@<sha> # v6.x.x 등)하고 Dependabot/Renovate로 SHA 갱신 PR을 받도록 설정한다.",
+      "confidence": "high",
+      "verified": false
+    },
+    {
+      "owasp": "A02",
+      "severity": "low",
+      "title": "보안 응답 헤더(CSP/HSTS/X-Frame-Options/X-Content-Type-Options) 미설정 및 X-Powered-By 노출",
+      "file": "next.config.ts",
+      "line": 3,
+      "evidence": "next.config.ts의 nextConfig 객체는 serverExternalPackages, outputFileTracingIncludes만 설정하고 headers() 비동기 함수가 없다. poweredByHeader:false도 설정되어 있지 않다. src/middleware.ts는 로그인 리다이렉트 시 cache-control/expires/pragma 헤더만 복사할 뿐 CSP·X-Frame-Options·X-Content-Type-Options·HSTS는 세팅하지 않는다. vercel.json도 없어 플랫폼 레벨 헤더 설정도 없다.",
+      "fix": "next.config.ts에 async headers()를 추가해 최소 X-Content-Type-Options: nosniff, X-Frame-Options: DENY(또는 CSP frame-ancestors), Strict-Transport-Security를 모든 경로에 적용한다. poweredByHeader:false로 X-Powered-By 노출도 끈다.",
+      "confidence": "high",
+      "verified": false
+    },
+    {
+      "owasp": "A03",
+      "severity": "low",
+      "title": "review-code.yml에 사용되지 않는 id-token: write 권한 선언",
+      "file": ".github/workflows/review-code.yml",
+      "line": 30,
+      "evidence": "workflow 레벨 permissions에 id-token:write가 선언되어 있으나 어느 스텝도 OIDC 토큰 발급/교환을 사용하지 않는다(grep으로 소비 지점 없음 확인). 최소 권한 원칙 위반 — action이 손상되면 불필요하게 OIDC 토큰 발급 능력까지 넘겨준다.",
+      "fix": "id-token: write 라인을 제거한다. 추후 OIDC가 실제로 필요해지면 그때 다시 추가한다.",
+      "confidence": "high",
+      "verified": false
+    },
+    {
+      "owasp": "A10",
+      "severity": "low",
+      "title": "finalize_statement RPC 호출이 retryTransient로 감싸지지 않아 일시적 네트워크 오류도 즉시 permanent 'unknown'으로 분류됨",
+      "file": "src/services/statementParserService.ts",
+      "line": 782,
+      "evidence": "inferColumnMapping과 classifyCategories 호출은 각각 retryTransient(3, ...)로 감싸 429/5xx/네트워크 오류를 지수 backoff로 최대 3회 재시도한다. 반면 같은 함수 안의 deps.supabase.rpc('finalize_statement', ...) 호출은 재시도 래퍼가 없다. finalizeError 메시지에 'reconciliation_failed'가 없으면 그 외 모든 경우(일시적 네트워크 단절 포함)가 즉시 permanent 'unknown'으로 분류되어 statement가 failed 처리된다. 사용자가 /retry로 복구 가능해 데이터 손실은 없지만 transient/permanent 분기 일관성이 Anthropic 호출과 RPC 호출 사이에서 깨져 있다.",
+      "fix": "finalize_statement RPC 호출도 네트워크성 오류에 한해 retryTransient(3, ...)로 감싸거나, finalizeError가 네트워크/연결 오류인지 판별해 provider_unavailable 계열로 분류할지 검토한다.",
+      "confidence": "medium",
+      "verified": false
+    },
+    {
+      "owasp": "A07",
+      "severity": "info",
+      "title": "Supabase 세션 쿠키가 httpOnly:false로 저장됨 (SDK 기본값, 미재정의)",
+      "file": "src/lib/supabase/client.ts",
+      "line": 8,
+      "evidence": "src/lib/supabase/client.ts의 createBrowserClient(...)와 src/lib/supabase/server.ts의 createServerClient(...) 모두 cookieOptions를 넘기지 않아 @supabase/ssr의 기본값(sameSite:\"lax\", httpOnly:false)이 그대로 적용된다. repo 전체에서 sameSite/httpOnly/secure를 재정의하는 코드가 없다. httpOnly:false이므로 세션 쿠키를 브라우저 JS에서 읽을 수 있으나, 이는 @supabase/ssr이 브라우저 클라이언트에서 세션을 읽기 위해 택한 SDK 기본 동작이며 이번 점검에서 XSS 자체는 발견되지 않았다(CLAUDE.md의 dangerouslySetInnerHTML 금지 규칙이 지켜지고 있음).",
+      "fix": "즉시 조치가 필요한 코드 결함은 아님(SDK 기본 동작). 심층방어를 원하면 CSP 헤더 도입(A02 finding)으로 XSS 발생 자체를 추가 차단하는 방향을 권장.",
+      "confidence": "medium",
+      "verified": false
+    }
+  ],
+  "coverage": {
+    "ran": ["npm audit (A03)", "secret regex", "category pattern grep", "LLM 카테고리 리뷰 (5 bundles, A01~A10 전체)", "adversarial 검증 (high 4건, 1인 skeptic)"],
+    "gaps": [
+      "osv-scanner 미설치 → OS/언어 패키지 취약점 DB 교차조회 생략(npm audit만 사용)",
+      "gitleaks 미설치 → 시크릿은 작업트리 정규식 스캔만(git 히스토리 전수 미점검)",
+      "semgrep 미설치 → 데이터플로우 기반 taint 분석 없음(패턴 grep + LLM 추론으로 대체)",
+      "npm audit critical/high 4건(next/postcss/sharp/nanoid)은 skeptic 검증 결과 이 앱에서 도달 불가능해 최종 리스트에서 제외 — dependency 자체의 취약점은 여전히 존재하므로 next/image·이미지 처리 기능을 추가하면 재평가가 필요하다"
+    ]
+  }
+}
