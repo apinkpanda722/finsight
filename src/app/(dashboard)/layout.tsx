@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import type { ReactNode } from "react"
@@ -9,6 +10,13 @@ import {
 } from "@/components/dashboard/pending-upload-context"
 import { createClient } from "@/lib/supabase/server"
 import { withClockSkewRetry } from "@/lib/supabase/retry"
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 const navigation = [
   { href: "/dashboard", label: "개요" },

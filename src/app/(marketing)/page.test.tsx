@@ -128,4 +128,27 @@ describe("LandingPage", () => {
     expect(screen.getByText("다중 계좌")).toBeInTheDocument()
     expect(screen.getByText("계좌별 무제한 히스토리")).toBeInTheDocument()
   })
+
+  it("embeds SoftwareApplication structured data for rich search results", () => {
+    const { container } = render(<LandingPage />)
+
+    const script = container.querySelector(
+      'script[type="application/ld+json"]'
+    )
+    expect(script).not.toBeNull()
+
+    const json = JSON.parse(script?.textContent ?? "{}")
+    expect(json).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Finsight",
+      applicationCategory: "FinanceApplication",
+    })
+    expect(json.offers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Free", price: "0" }),
+        expect.objectContaining({ name: "Pro", price: "9900" }),
+      ])
+    )
+  })
 })

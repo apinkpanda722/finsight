@@ -48,6 +48,20 @@ const plans = [
   },
 ]
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Finsight",
+  description:
+    "계좌 연동이나 마이데이터 인증 없이, CSV 명세서 업로드만으로 지출을 자동 분류하고 월별 추이를 확인하는 개인 가계부.",
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  offers: [
+    { "@type": "Offer", name: "Free", price: "0", priceCurrency: "KRW" },
+    { "@type": "Offer", name: "Pro", price: "9900", priceCurrency: "KRW" },
+  ],
+}
+
 function StartButton({ className = "" }: { className?: string }) {
   return (
     <Button asChild className={`h-12 px-6 text-base ${className}`}>
@@ -59,6 +73,10 @@ function StartButton({ className = "" }: { className?: string }) {
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <section className="overflow-hidden bg-[var(--color-surface-dark)] text-[var(--color-on-dark)]">
         <header className="mx-auto flex h-16 max-w-(--container-max) items-center justify-between px-6 sm:px-8">
           <Link

@@ -40,8 +40,33 @@ describe("RootLayout", () => {
     expect(layout.props.children.props.className).toBe("antialiased")
   })
 
-  it("uses Finsight metadata", () => {
-    expect(metadata.title).toBe("Finsight")
+  it("uses Finsight metadata with the differentiator SEO title", () => {
+    expect(metadata.title).toEqual({
+      default: "계좌 연동 없이 CSV로 쓰는 가계부 | Finsight",
+      template: "%s | Finsight",
+    })
     expect(metadata.description).toContain("CSV")
+    expect(metadata.description).toContain("계좌 연동")
+  })
+
+  it("sets an absolute metadataBase for resolving Open Graph URLs", () => {
+    expect(metadata.metadataBase).toBeInstanceOf(URL)
+  })
+
+  it("exposes matching Open Graph and Twitter card metadata", () => {
+    expect(metadata.openGraph).toMatchObject({
+      title: "계좌 연동 없이 CSV로 쓰는 가계부 | Finsight",
+      siteName: "Finsight",
+      locale: "ko_KR",
+      type: "website",
+    })
+    expect(metadata.twitter).toMatchObject({
+      card: "summary_large_image",
+      title: "계좌 연동 없이 CSV로 쓰는 가계부 | Finsight",
+    })
+  })
+
+  it("allows indexing by default at the root", () => {
+    expect(metadata.robots).toMatchObject({ index: true, follow: true })
   })
 })

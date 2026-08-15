@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
   redirect: authMocks.redirect,
 }))
 
-import DashboardLayout, { signOutAction } from "./layout"
+import DashboardLayout, { metadata, signOutAction } from "./layout"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -41,6 +41,10 @@ beforeEach(() => {
 })
 
 describe("DashboardLayout", () => {
+  it("keeps authenticated dashboard pages out of search engine indexes", () => {
+    expect(metadata.robots).toMatchObject({ index: false, follow: false })
+  })
+
   it("renders authenticated dashboard content", async () => {
     authMocks.getClaims.mockResolvedValue({
       data: { claims: { sub: "user-id" } },
