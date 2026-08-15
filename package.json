@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "eval": "node evals/harness/run.ts",
     "prepare": "husky"
   },
   "dependencies": {
